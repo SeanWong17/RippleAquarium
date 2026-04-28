@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { floorY, worldSize } from "./config.js";
+import { aquariumFloorY, aquariumSize } from "./config.js";
 
 export function createRenderer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -24,7 +24,7 @@ export function addLighting(scene) {
   scene.add(hemiLight);
 
   const sun = new THREE.DirectionalLight(0xffffff, 2.2);
-  sun.position.set(8, 12, 6);
+  sun.position.set(0.8, 15, 0.6);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -18;
@@ -37,7 +37,7 @@ export function addLighting(scene) {
   scene.add(sun);
 }
 
-export function addWorldBounds(scene) {
+export function addAquarium(scene) {
   const glassMaterial = new THREE.MeshPhysicalMaterial({
     color: 0x9bdcff,
     roughness: 0.02,
@@ -52,24 +52,24 @@ export function addWorldBounds(scene) {
     clearcoatRoughness: 0.08,
   });
 
-  const bounds = new THREE.Mesh(
-    new THREE.BoxGeometry(worldSize.x, worldSize.y, worldSize.z),
+  const aquariumGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(aquariumSize.x, aquariumSize.y, aquariumSize.z),
     glassMaterial,
   );
-  scene.add(bounds);
+  scene.add(aquariumGlass);
 
-  const boundsEdges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(bounds.geometry),
+  const aquariumEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(aquariumGlass.geometry),
     new THREE.LineBasicMaterial({
       color: 0xc6efff,
       transparent: true,
       opacity: 0.42,
     }),
   );
-  scene.add(boundsEdges);
+  scene.add(aquariumEdges);
 
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(worldSize.x, worldSize.z),
+    new THREE.PlaneGeometry(aquariumSize.x, aquariumSize.z),
     new THREE.MeshStandardMaterial({
       color: 0x17222a,
       roughness: 0.9,
@@ -77,7 +77,7 @@ export function addWorldBounds(scene) {
     }),
   );
   floor.rotation.x = -Math.PI / 2;
-  floor.position.y = floorY - 0.008;
+  floor.position.y = aquariumFloorY - 0.008;
   floor.receiveShadow = true;
   scene.add(floor);
 

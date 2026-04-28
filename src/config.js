@@ -1,8 +1,8 @@
 import * as THREE from "three";
 
-export const worldHalfSize = new THREE.Vector3(11, 6.6, 8.5);
-export const worldSize = worldHalfSize.clone().multiplyScalar(2);
-export const floorY = -worldHalfSize.y;
+export const aquariumHalfSize = new THREE.Vector3(11, 6.6, 8.5);
+export const aquariumSize = aquariumHalfSize.clone().multiplyScalar(2);
+export const aquariumFloorY = -aquariumHalfSize.y;
 
 export const fishConfig = {
   radius: 0.13,

@@ -2,16 +2,16 @@ import * as THREE from "three";
 import {
   createRayDirections,
   mulberry32,
-  randomPointInBox,
+  randomPointInAquarium,
   randomPointInSphere,
 } from "./random.js";
 
-export class BoidSimulation {
-  constructor({ worldHalfSize, obstacles, settings }) {
-    this.worldHalfSize = worldHalfSize;
+export class FishSchoolSimulation {
+  constructor({ aquariumHalfSize, obstacles, settings }) {
+    this.aquariumHalfSize = aquariumHalfSize;
     this.obstacles = obstacles;
     this.settings = settings;
-    this.boids = [];
+    this.fish = [];
     this.rayDirections = createRayDirections(300);
 
     this.tmpVecA = new THREE.Vector3();
@@ -22,18 +22,18 @@ export class BoidSimulation {
   }
 
   reset(count, seed = 42) {
-    this.boids.length = 0;
+    this.fish.length = 0;
     const random = mulberry32(seed);
 
     for (let i = 0; i < count; i += 1) {
-      const position = randomPointInBox(random, this.worldHalfSize, 0.62);
+      const position = randomPointInAquarium(random, this.aquariumHalfSize, 0.62);
       const direction = randomPointInSphere(random, 1).normalize();
       const speed = THREE.MathUtils.lerp(
         this.settings.minSpeed,
         this.settings.maxSpeed,
         random(),
       );
-      this.boids.push({
+      this.fish.push({
         position,
         velocity: direction.multiplyScalar(speed),
       });
@@ -41,12 +41,12 @@ export class BoidSimulation {
   }
 
   update(dt, options = {}) {
-    const nextVelocities = new Array(this.boids.length);
-    const nextPositions = new Array(this.boids.length);
+    const nextVelocities = new Array(this.fish.length);
+    const nextPositions = new Array(this.fish.length);
     let trace = null;
 
-    for (let i = 0; i < this.boids.length; i += 1) {
-      const boid = this.boids[i];
+    for (let i = 0; i < this.fish.length; i += 1) {
+      const fish = this.fish[i];
       const acceleration = new THREE.Vector3();
       const components = options.traceIndex === i ? {
         align: new THREE.Vector3(),
@@ -63,10 +63,10 @@ export class BoidSimulation {
       let collisionAvoidanceActive = false;
       let boundaryAvoidanceActive = false;
 
-      for (let j = 0; j < this.boids.length; j += 1) {
+      for (let j = 0; j < this.fish.length; j += 1) {
         if (i === j) continue;
-        const other = this.boids[j];
-        const offset = this.tmpVecA.subVectors(other.position, boid.position);
+        const other = this.fish[j];
+        const offset = this.tmpVecA.subVectors(other.position, fish.position);
         const distanceSq = offset.lengthSq();
 
         if (distanceSq < this.settings.perceptionRadius * this.settings.perceptionRadius) {
@@ -83,18 +83,18 @@ export class BoidSimulation {
 
       if (neighborCount > 0) {
         centerSum.multiplyScalar(1 / neighborCount);
-        const align = this.steerTowards(headingSum, boid.velocity).multiplyScalar(
+        const align = this.steerTowards(headingSum, fish.velocity).multiplyScalar(
           this.settings.alignWeight,
         );
         const cohesion = this.steerTowards(
-          centerSum.sub(boid.position),
-          boid.velocity,
+          centerSum.sub(fish.position),
+          fish.velocity,
         ).multiplyScalar(
           this.settings.cohesionWeight,
         );
         const separation = this.steerTowards(
           avoidanceSum,
-          boid.velocity,
+          fish.velocity,
         ).multiplyScalar(
           this.settings.separateWeight,
         );
@@ -111,21 +111,21 @@ export class BoidSimulation {
       }
 
       const target = this.steerTowards(
-        this.tmpVecA.copy(boid.position).multiplyScalar(-1),
-        boid.velocity,
+        this.tmpVecA.copy(fish.position).multiplyScalar(-1),
+        fish.velocity,
       ).multiplyScalar(this.settings.targetWeight);
       acceleration.add(target);
       if (components) {
         components.target.copy(target);
       }
 
-      const forward = this.tmpVecB.copy(boid.velocity).normalize();
-      if (this.isHeadingForCollision(boid.position, forward)) {
+      const forward = this.tmpVecB.copy(fish.velocity).normalize();
+      if (this.isHeadingForCollision(fish.position, forward)) {
         collisionAvoidanceActive = true;
-        const clearDirection = this.obstacleRays(boid.position, forward);
+        const clearDirection = this.obstacleRays(fish.position, forward);
         const obstacle = this.steerTowards(
           clearDirection,
-          boid.velocity,
+          fish.velocity,
         ).multiplyScalar(
           this.settings.avoidCollisionWeight,
         );
@@ -135,12 +135,12 @@ export class BoidSimulation {
         }
       }
 
-      const boundary = this.boxBoundarySteer(boid.position, this.settings.boundaryMargin);
+      const boundary = this.aquariumBoundarySteer(fish.position, this.settings.boundaryMargin);
       if (boundary.lengthSq() > 0) {
         boundaryAvoidanceActive = true;
         const boundaryForce = this.steerTowards(
           boundary,
-          boid.velocity,
+          fish.velocity,
         ).multiplyScalar(
           this.settings.boundaryWeight,
         );
@@ -150,17 +150,17 @@ export class BoidSimulation {
         }
       }
 
-      const desiredVelocity = boid.velocity.clone().add(acceleration.multiplyScalar(dt));
+      const desiredVelocity = fish.velocity.clone().add(acceleration.multiplyScalar(dt));
       const speed = THREE.MathUtils.clamp(
         desiredVelocity.length(),
         this.settings.minSpeed,
         this.settings.maxSpeed,
       );
       desiredVelocity.normalize().multiplyScalar(speed);
-      const velocity = this.limitTurn(boid.velocity, desiredVelocity, dt);
+      const velocity = this.limitTurn(fish.velocity, desiredVelocity, dt);
 
       nextVelocities[i] = velocity;
-      nextPositions[i] = boid.position.clone().addScaledVector(velocity, dt);
+      nextPositions[i] = fish.position.clone().addScaledVector(velocity, dt);
 
       if (components) {
         trace = {
@@ -168,15 +168,15 @@ export class BoidSimulation {
           neighborCount,
           collisionAvoidanceActive,
           boundaryAvoidanceActive,
-          previousVelocity: boid.velocity.clone(),
+          previousVelocity: fish.velocity.clone(),
           nextVelocity: velocity.clone(),
         };
       }
     }
 
-    for (let i = 0; i < this.boids.length; i += 1) {
-      this.boids[i].velocity.copy(nextVelocities[i]);
-      this.boids[i].position.copy(nextPositions[i]);
+    for (let i = 0; i < this.fish.length; i += 1) {
+      this.fish[i].velocity.copy(nextVelocities[i]);
+      this.fish[i].position.copy(nextPositions[i]);
     }
 
     return trace;
@@ -226,7 +226,7 @@ export class BoidSimulation {
       forward,
       this.settings.collisionAvoidDistance,
     );
-    return !this.isInsideBox(end, this.settings.boundsRadius);
+    return !this.isInsideAquarium(end, this.settings.boundsRadius);
   }
 
   obstacleRays(position, forward) {
@@ -243,7 +243,7 @@ export class BoidSimulation {
       );
 
       if (!this.rayHitsObstacle(position, direction, this.settings.collisionAvoidDistance)) {
-        if (this.isInsideBox(end, this.settings.boundsRadius)) {
+        if (this.isInsideAquarium(end, this.settings.boundsRadius)) {
           return direction.clone();
         }
       }
@@ -274,11 +274,11 @@ export class BoidSimulation {
     return false;
   }
 
-  boxBoundarySteer(position, margin) {
+  aquariumBoundarySteer(position, margin) {
     const steer = new THREE.Vector3();
 
     for (const axis of ["x", "y", "z"]) {
-      const innerLimit = this.worldHalfSize[axis] - margin;
+      const innerLimit = this.aquariumHalfSize[axis] - margin;
 
       if (position[axis] > innerLimit) {
         steer[axis] -= (position[axis] - innerLimit) / margin;
@@ -290,11 +290,11 @@ export class BoidSimulation {
     return steer;
   }
 
-  isInsideBox(point, inset = 0) {
+  isInsideAquarium(point, inset = 0) {
     return (
-      Math.abs(point.x) <= this.worldHalfSize.x - inset &&
-      Math.abs(point.y) <= this.worldHalfSize.y - inset &&
-      Math.abs(point.z) <= this.worldHalfSize.z - inset
+      Math.abs(point.x) <= this.aquariumHalfSize.x - inset &&
+      Math.abs(point.y) <= this.aquariumHalfSize.y - inset &&
+      Math.abs(point.z) <= this.aquariumHalfSize.z - inset
     );
   }
 }

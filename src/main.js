@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { BoidSimulation } from "./boid-simulation.js";
+import { FishSchoolSimulation } from "./fish-school-simulation.js";
 import { bindCameraToggle, createCameraRig } from "./camera-rig.js";
-import { fishConfig, obstacles, simulationSettings, worldHalfSize } from "./config.js";
+import { aquariumHalfSize, fishConfig, obstacles, simulationSettings } from "./config.js";
 import {
   createFishMesh,
   disposeFishMesh,
@@ -11,7 +11,7 @@ import { createHeadingDebugger } from "./heading-debugger.js";
 import {
   addLighting,
   addObstacles,
-  addWorldBounds,
+  addAquarium,
   createRenderer,
   createScene,
 } from "./scene-setup.js";
@@ -26,8 +26,8 @@ const headingDebugger = createHeadingDebugger({
   enabled: query.get("debugHeading") === "1",
   frameLimit: Number(query.get("debugFrames")) || undefined,
 });
-const simulation = new BoidSimulation({
-  worldHalfSize,
+const simulation = new FishSchoolSimulation({
+  aquariumHalfSize,
   obstacles,
   settings: simulationSettings,
 });
@@ -51,11 +51,11 @@ const outputs = {
 };
 
 addLighting(scene);
-addWorldBounds(scene);
+addAquarium(scene);
 addObstacles(scene, obstacles);
 bindControls();
 bindCameraToggle(cameraRig);
-resetBoids(Number(inputs.count.value));
+resetFish(Number(inputs.count.value));
 resize();
 window.addEventListener("resize", resize);
 renderer.setAnimationLoop(animate);
@@ -66,7 +66,7 @@ function bindControls() {
       outputs[key].value = input.value;
 
       if (key === "count") {
-        resetBoids(Number(input.value));
+        resetFish(Number(input.value));
         return;
       }
 
@@ -78,11 +78,11 @@ function bindControls() {
   }
 
   document.querySelector("#reset").addEventListener("click", () => {
-    resetBoids(Number(inputs.count.value));
+    resetFish(Number(inputs.count.value));
   });
 }
 
-function resetBoids(count) {
+function resetFish(count) {
   simulation.reset(count);
 
   if (fishMesh) {
@@ -92,8 +92,8 @@ function resetBoids(count) {
 
   fishMesh = createFishMesh(count);
   scene.add(fishMesh);
-  updateFishInstances(fishMesh, simulation.boids);
-  cameraRig.updateFishCamera(simulation.boids[fishConfig.highlightedIndex]);
+  updateFishInstances(fishMesh, simulation.fish);
+  cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex]);
 }
 
 function animate() {
@@ -101,13 +101,13 @@ function animate() {
   const trace = simulation.update(dt, {
     traceIndex: headingDebugger?.traceIndex,
   });
-  updateFishInstances(fishMesh, simulation.boids);
+  updateFishInstances(fishMesh, simulation.fish);
   headingDebugger?.sample({
     dt,
-    boid: simulation.boids[fishConfig.highlightedIndex],
+    fish: simulation.fish[fishConfig.highlightedIndex],
     trace,
   });
-  cameraRig.updateFishCamera(simulation.boids[fishConfig.highlightedIndex], dt);
+  cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex], dt);
   cameraRig.update();
   renderer.render(scene, cameraRig.activeCamera);
 }

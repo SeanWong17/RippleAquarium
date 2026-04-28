@@ -39,20 +39,20 @@ export function disposeFishMesh(mesh) {
   mesh.material.dispose();
 }
 
-export function updateFishInstances(mesh, boids) {
-  for (let i = 0; i < boids.length; i += 1) {
-    const boid = boids[i];
-    const direction = tmpDirection.copy(boid.velocity).normalize();
+export function updateFishInstances(mesh, fish) {
+  for (let i = 0; i < fish.length; i += 1) {
+    const currentFish = fish[i];
+    const direction = tmpDirection.copy(currentFish.velocity).normalize();
     tmpQuaternion.setFromUnitVectors(upAxis, direction);
-    tmpMatrix.compose(boid.position, tmpQuaternion, unitScale);
+    tmpMatrix.compose(currentFish.position, tmpQuaternion, unitScale);
     mesh.setMatrixAt(i, tmpMatrix);
   }
   mesh.instanceMatrix.needsUpdate = true;
 }
 
-export function getFishHeadPose(boid, pose) {
-  pose.direction.copy(boid.velocity).normalize();
-  pose.position.copy(boid.position).addScaledVector(
+export function getFishHeadPose(fish, pose) {
+  pose.direction.copy(fish.velocity).normalize();
+  pose.position.copy(fish.position).addScaledVector(
     pose.direction,
     fishConfig.length / 2,
   );

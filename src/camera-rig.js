@@ -56,10 +56,10 @@ export function createCameraRig(renderer) {
       }
     },
 
-    updateFishCamera(boid, dt = 0) {
-      if (!boid) return;
+    updateFishCamera(fish, dt = 0) {
+      if (!fish) return;
 
-      getFishHeadPose(boid, pose);
+      getFishHeadPose(fish, pose);
 
       if (!fishCameraInitialized || dt <= 0) {
         smoothedFishPosition.copy(pose.position);

@@ -30,7 +30,7 @@ export function mulberry32(seed) {
   };
 }
 
-export function randomPointInBox(random, halfSize, scale = 1) {
+export function randomPointInAquarium(random, halfSize, scale = 1) {
   return new THREE.Vector3(
     (random() * 2 - 1) * halfSize.x * scale,
     (random() * 2 - 1) * halfSize.y * scale,

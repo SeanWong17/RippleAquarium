@@ -18,12 +18,12 @@ export function createHeadingDebugger({ enabled, frameLimit = DEFAULT_FRAME_LIMI
       return 0;
     },
 
-    sample({ dt, boid, trace }) {
-      if (!boid || frame >= frameLimit) {
+    sample({ dt, fish, trace }) {
+      if (!fish || frame >= frameLimit) {
         return;
       }
 
-      currentDirection.copy(boid.velocity).normalize();
+      currentDirection.copy(fish.velocity).normalize();
       const deltaDegrees = hasPreviousDirection
         ? THREE.MathUtils.radToDeg(previousDirection.angleTo(currentDirection))
         : 0;
@@ -46,7 +46,7 @@ export function createHeadingDebugger({ enabled, frameLimit = DEFAULT_FRAME_LIMI
           Number(currentDirection.y.toFixed(3)),
           Number(currentDirection.z.toFixed(3)),
         ],
-        speed: Number(boid.velocity.length().toFixed(3)),
+        speed: Number(fish.velocity.length().toFixed(3)),
         neighborCount: trace?.neighborCount ?? 0,
         collisionAvoidanceActive: trace?.collisionAvoidanceActive ?? false,
         boundaryAvoidanceActive: trace?.boundaryAvoidanceActive ?? false,
