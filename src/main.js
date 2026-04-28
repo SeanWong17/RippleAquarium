@@ -16,6 +16,7 @@ import {
   createScene,
 } from "./scene-setup.js";
 
+const STEP_FRAME_SECONDS = 1 / 60;
 const canvas = getRequiredElement("#scene");
 const renderer = createRenderer(canvas);
 const scene = createScene();
@@ -49,6 +50,9 @@ const simulationControlSettings = {
 };
 
 let fishMesh = null;
+let simulationPaused = false;
+let pendingSimulationSteps = 0;
+let simulationTime = 0;
 
 const lighting = addLighting(scene);
 lighting.setIntensity(readControlValue("light"));
@@ -56,6 +60,7 @@ const aquariumEffects = addAquarium(scene);
 addObstacles(scene, obstacles);
 applySimulationSettingsFromControls();
 bindControls();
+bindPlaybackControls();
 bindCameraToggle(cameraRig);
 const cameraPanel = bindCameraPanel(cameraRig);
 simulation.reset(readControlValue("count"));
@@ -72,6 +77,33 @@ function bindControls() {
       applyControlChange(key);
     });
   }
+}
+
+function bindPlaybackControls() {
+  const toggleButton = getRequiredElement("#playback-toggle");
+  const stepButton = getRequiredElement("#step-frame");
+
+  toggleButton.addEventListener("click", () => {
+    simulationPaused = !simulationPaused;
+    if (!simulationPaused) {
+      pendingSimulationSteps = 0;
+    }
+    syncPlaybackControls(toggleButton, stepButton);
+  });
+
+  stepButton.addEventListener("click", () => {
+    if (!simulationPaused) return;
+
+    pendingSimulationSteps += 1;
+  });
+
+  syncPlaybackControls(toggleButton, stepButton);
+}
+
+function syncPlaybackControls(toggleButton, stepButton) {
+  toggleButton.textContent = simulationPaused ? "Resume" : "Pause";
+  toggleButton.setAttribute("aria-pressed", String(simulationPaused));
+  stepButton.disabled = !simulationPaused;
 }
 
 function applyControlChange(key) {
@@ -112,22 +144,44 @@ function rebuildFishMesh() {
 }
 
 function animate() {
-  const dt = Math.min(clock.getDelta(), 1 / 30);
-  const time = clock.elapsedTime;
-  const trace = simulation.update(dt, {
-    traceIndex: headingDebugger?.traceIndex,
-  });
-  updateFishInstances(fishMesh, simulation.fish);
-  aquariumEffects.update(time);
-  headingDebugger?.sample({
-    dt,
-    fish: simulation.fish[fishConfig.highlightedIndex],
-    trace,
-  });
-  cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex], dt);
+  const frameDt = Math.min(clock.getDelta(), 1 / 30);
+  const simulationDt = getSimulationDelta(frameDt);
+  let trace = null;
+
+  if (simulationDt > 0) {
+    simulationTime += simulationDt;
+    trace = simulation.update(simulationDt, {
+      traceIndex: headingDebugger?.traceIndex,
+    });
+    updateFishInstances(fishMesh, simulation.fish);
+    aquariumEffects.update(simulationTime);
+    headingDebugger?.sample({
+      dt: simulationDt,
+      fish: simulation.fish[fishConfig.highlightedIndex],
+      trace,
+    });
+    cameraRig.updateFishCamera(
+      simulation.fish[fishConfig.highlightedIndex],
+      simulationDt,
+    );
+  }
+
   cameraRig.update();
   cameraPanel.update();
   renderer.render(scene, cameraRig.activeCamera);
+}
+
+function getSimulationDelta(frameDt) {
+  if (!simulationPaused) {
+    return frameDt;
+  }
+
+  if (pendingSimulationSteps <= 0) {
+    return 0;
+  }
+
+  pendingSimulationSteps -= 1;
+  return STEP_FRAME_SECONDS;
 }
 
 function resize() {
@@ -139,15 +193,8 @@ function resize() {
 }
 
 function bindCameraPanel(rig) {
-  const modeOutput = getRequiredElement("#camera-mode");
   const copyButton = getRequiredElement("#copy-camera-json");
   const copyStatus = getRequiredElement("#copy-camera-status");
-  const transformOutputs = {
-    position: getRequiredElement("#camera-position"),
-    rotation: getRequiredElement("#camera-rotation"),
-    quaternion: getRequiredElement("#camera-quaternion"),
-    up: getRequiredElement("#camera-up"),
-  };
   let copyStatusTimeout = 0;
 
   copyButton.addEventListener("click", async () => {
@@ -160,22 +207,7 @@ function bindCameraPanel(rig) {
     }, 1800);
   });
 
-  function update() {
-    const camera = rig.activeCamera;
-
-    modeOutput.textContent = `mode: ${rig.mode}`;
-    syncTransformOutputs(camera);
-  }
-
-  function syncTransformOutputs(camera) {
-    transformOutputs.position.textContent = formatVector(camera.position);
-    transformOutputs.rotation.textContent = formatRotation(camera.rotation);
-    transformOutputs.quaternion.textContent = formatQuaternion(camera.quaternion);
-    transformOutputs.up.textContent = formatVector(camera.up);
-  }
-
-  update();
-  return { update };
+  return { update() {} };
 }
 
 function readCameraTransformSnapshot(rig) {
@@ -232,28 +264,12 @@ function fallbackCopyText(text) {
   }
 }
 
-function formatVector(vector) {
-  return `${formatCameraNumber(vector.x)}, ${formatCameraNumber(vector.y)}, ${formatCameraNumber(vector.z)}`;
-}
-
-function formatRotation(rotation) {
-  return `${formatCameraNumber(rotation.x)}, ${formatCameraNumber(rotation.y)}, ${formatCameraNumber(rotation.z)} ${rotation.order}`;
-}
-
-function formatQuaternion(quaternion) {
-  return `${formatCameraNumber(quaternion.x)}, ${formatCameraNumber(quaternion.y)}, ${formatCameraNumber(quaternion.z)}, ${formatCameraNumber(quaternion.w)}`;
-}
-
 function vectorToJSON(vector) {
   return {
     x: roundCameraNumber(vector.x),
     y: roundCameraNumber(vector.y),
     z: roundCameraNumber(vector.z),
   };
-}
-
-function formatCameraNumber(value) {
-  return String(roundCameraNumber(value));
 }
 
 function roundCameraNumber(value) {

@@ -88,6 +88,31 @@ button:hover {
   background: #3e707b;
 }
 
+button:disabled {
+  color: #78909d;
+  background: rgb(49 90 99 / 38%);
+  cursor: not-allowed;
+}
+
+button:disabled:hover {
+  background: rgb(49 90 99 / 38%);
+}
+
+.playback-controls {
+  display: grid;
+  grid-template-columns: 1fr 84px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.toggle-button[aria-pressed="true"] {
+  background: #7c4e56;
+}
+
+.toggle-button[aria-pressed="true"]:hover {
+  background: #935f68;
+}
+
 label {
   display: grid;
   grid-template-columns: 88px 1fr 42px;
@@ -112,38 +137,13 @@ input[type="range"] {
 .camera-panel {
   top: auto;
   bottom: 18px;
+  width: auto;
   max-height: calc(100vh - 36px);
   overflow: auto;
 }
 
-.transform-readout {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-}
-
-.transform-readout div {
-  display: grid;
-  grid-template-columns: 74px 1fr;
-  gap: 10px;
-  align-items: start;
-}
-
-.transform-readout dt {
-  color: #dce6ef;
-  font-size: 13px;
-}
-
-.transform-readout dd {
-  min-width: 0;
-  margin: 0;
-  color: #9fb0bf;
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 12px;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-  font-variant-numeric: tabular-nums;
+.camera-panel .panel-header {
+  margin-bottom: 0;
 }
 
 .copy-status {
@@ -151,6 +151,10 @@ input[type="range"] {
   margin-top: 10px;
   color: #61d394;
   font-size: 12px;
+}
+
+.copy-status:empty {
+  display: none;
 }
 
 @media (max-width: 620px) {
@@ -173,10 +177,7 @@ input[type="range"] {
   .camera-panel {
     top: auto;
     bottom: 12px;
+    width: auto;
     max-height: min(48vh, 380px);
-  }
-
-  .transform-readout div {
-    grid-template-columns: 72px 1fr;
   }
 }

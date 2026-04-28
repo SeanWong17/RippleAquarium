@@ -18,6 +18,13 @@
     <main id="app">
       <canvas id="scene"></canvas>
       <section class="panel" aria-label="Fish tank controls">
+        <div class="playback-controls" aria-label="Simulation playback controls">
+          <button id="playback-toggle" class="toggle-button" type="button" aria-pressed="false">
+            Pause
+          </button>
+          <button id="step-frame" type="button" disabled>Step</button>
+        </div>
+
         <label>
           Fish
           <input id="count" type="range" min="1" max="260" step="1" value="60" />
@@ -57,33 +64,7 @@
 
       <section class="panel camera-panel" aria-label="Camera controls">
         <div class="panel-header">
-          <div>
-            <h2>Camera</h2>
-            <p id="camera-mode">mode: orbit</p>
-          </div>
           <button id="copy-camera-json" type="button">Copy JSON</button>
-        </div>
-
-        <div class="camera-section">
-          <h3>Transform</h3>
-          <dl class="transform-readout">
-            <div>
-              <dt>Position</dt>
-              <dd id="camera-position">0, 0, 0</dd>
-            </div>
-            <div>
-              <dt>Rotation</dt>
-              <dd id="camera-rotation">0, 0, 0</dd>
-            </div>
-            <div>
-              <dt>Quaternion</dt>
-              <dd id="camera-quaternion">0, 0, 0, 1</dd>
-            </div>
-            <div>
-              <dt>Up</dt>
-              <dd id="camera-up">0, 1, 0</dd>
-            </div>
-          </dl>
         </div>
 
         <p id="copy-camera-status" class="copy-status" role="status" aria-live="polite"></p>
