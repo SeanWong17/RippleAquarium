@@ -51,7 +51,7 @@ const outputs = {
 };
 
 addLighting(scene);
-addAquarium(scene);
+const aquariumEffects = addAquarium(scene);
 addObstacles(scene, obstacles);
 bindControls();
 bindCameraToggle(cameraRig);
@@ -98,10 +98,12 @@ function resetFish(count) {
 
 function animate() {
   const dt = Math.min(clock.getDelta(), 1 / 30);
+  const time = clock.elapsedTime;
   const trace = simulation.update(dt, {
     traceIndex: headingDebugger?.traceIndex,
   });
   updateFishInstances(fishMesh, simulation.fish);
+  aquariumEffects.update(time);
   headingDebugger?.sample({
     dt,
     fish: simulation.fish[fishConfig.highlightedIndex],

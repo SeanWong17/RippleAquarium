@@ -3,6 +3,7 @@ import * as THREE from "three";
 export const aquariumHalfSize = new THREE.Vector3(11, 6.6, 8.5);
 export const aquariumSize = aquariumHalfSize.clone().multiplyScalar(2);
 export const aquariumFloorY = -aquariumHalfSize.y;
+export const waterLevelY = aquariumHalfSize.y - 0.72;
 
 export const fishConfig = {
   radius: 0.13,

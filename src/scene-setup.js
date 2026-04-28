@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { aquariumFloorY, aquariumSize } from "./config.js";
+import { aquariumFloorY, aquariumSize, waterLevelY } from "./config.js";
 
 export function createRenderer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -38,6 +38,8 @@ export function addLighting(scene) {
 }
 
 export function addAquarium(scene) {
+  const effects = [];
+
   const glassMaterial = new THREE.MeshPhysicalMaterial({
     color: 0x9bdcff,
     roughness: 0.02,
@@ -92,6 +94,16 @@ export function addAquarium(scene) {
   floorEdges.rotation.copy(floor.rotation);
   floorEdges.position.copy(floor.position);
   scene.add(floorEdges);
+
+  effects.push(addBubbleColumns(scene));
+
+  return {
+    update(time) {
+      for (const effect of effects) {
+        effect.update?.(time);
+      }
+    },
+  };
 }
 
 export function addObstacles(scene, obstacles) {
@@ -113,4 +125,65 @@ export function addObstacles(scene, obstacles) {
     mesh.receiveShadow = true;
     scene.add(mesh);
   }
+}
+
+function addBubbleColumns(scene) {
+  const count = 84;
+  const geometry = new THREE.SphereGeometry(0.035, 8, 6);
+  const material = new THREE.MeshPhysicalMaterial({
+    color: 0xd8fbff,
+    roughness: 0.08,
+    metalness: 0,
+    transmission: 0.2,
+    transparent: true,
+    opacity: 0.54,
+    depthWrite: false,
+  });
+  const bubbles = new THREE.InstancedMesh(geometry, material, count);
+  bubbles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  scene.add(bubbles);
+
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const scale = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const starts = [];
+
+  for (let i = 0; i < count; i += 1) {
+    const column = i % 3;
+    const ring = Math.floor(i / 3);
+    const baseX = [-8.4, 0.2, 7.8][column];
+    const baseZ = [-5.8, 6.3, -4.7][column];
+    starts.push({
+      x: baseX + Math.sin(ring * 1.7) * 0.42,
+      z: baseZ + Math.cos(ring * 1.31) * 0.36,
+      phase: (i * 0.137) % 1,
+      size: 0.58 + ((i * 37) % 29) / 50,
+      speed: 0.045 + ((i * 17) % 13) * 0.003,
+    });
+  }
+
+  function update(time) {
+    const height = waterLevelY - aquariumFloorY - 0.45;
+
+    for (let i = 0; i < count; i += 1) {
+      const bubble = starts[i];
+      const t = (bubble.phase + time * bubble.speed) % 1;
+      position.set(
+        bubble.x + Math.sin(time * 1.2 + i) * 0.08,
+        aquariumFloorY + 0.24 + t * height,
+        bubble.z + Math.cos(time * 1.45 + i * 0.7) * 0.08,
+      );
+      const s = bubble.size * (0.55 + t * 0.55);
+      scale.setScalar(s);
+      matrix.compose(position, quaternion, scale);
+      bubbles.setMatrixAt(i, matrix);
+    }
+
+    bubbles.instanceMatrix.needsUpdate = true;
+  }
+
+  update(0);
+
+  return { update };
 }
