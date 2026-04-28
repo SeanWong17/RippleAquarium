@@ -92,9 +92,11 @@ export function createCameraRig(renderer) {
     },
 
     resize(width, height) {
-      orbitCamera.aspect = width / height;
+      const aspect = Math.max(1, width) / Math.max(1, height);
+
+      orbitCamera.aspect = aspect;
       orbitCamera.updateProjectionMatrix();
-      fishCamera.aspect = width / height;
+      fishCamera.aspect = aspect;
       fishCamera.updateProjectionMatrix();
     },
   };

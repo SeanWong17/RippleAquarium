@@ -16,7 +16,7 @@ import {
   createScene,
 } from "./scene-setup.js";
 
-const canvas = document.querySelector("#scene");
+const canvas = getRequiredElement("#scene");
 const renderer = createRenderer(canvas);
 const scene = createScene();
 const clock = new THREE.Clock();
@@ -32,59 +32,65 @@ const simulation = new FishSchoolSimulation({
   settings: simulationSettings,
 });
 
+const controls = {
+  count: createControl("#count", "#count-value"),
+  perception: createControl("#perception", "#perception-value"),
+  separation: createControl("#separation", "#separation-value"),
+  avoidance: createControl("#avoidance", "#avoidance-value"),
+  turnRate: createControl("#turn-rate", "#turn-rate-value"),
+  light: createControl("#light", "#light-value"),
+};
+
+const simulationControlSettings = {
+  perception: "perceptionRadius",
+  separation: "separateWeight",
+  avoidance: "avoidCollisionWeight",
+  turnRate: "maxTurnRate",
+};
+
 let fishMesh = null;
 
-const inputs = {
-  count: document.querySelector("#count"),
-  perception: document.querySelector("#perception"),
-  separation: document.querySelector("#separation"),
-  avoidance: document.querySelector("#avoidance"),
-  turnRate: document.querySelector("#turn-rate"),
-  light: document.querySelector("#light"),
-};
-
-const outputs = {
-  count: document.querySelector("#count-value"),
-  perception: document.querySelector("#perception-value"),
-  separation: document.querySelector("#separation-value"),
-  avoidance: document.querySelector("#avoidance-value"),
-  turnRate: document.querySelector("#turn-rate-value"),
-  light: document.querySelector("#light-value"),
-};
-
 const lighting = addLighting(scene);
-lighting.setIntensity(Number(inputs.light.value));
+lighting.setIntensity(readControlValue("light"));
 const aquariumEffects = addAquarium(scene);
 addObstacles(scene, obstacles);
+applySimulationSettingsFromControls();
 bindControls();
 bindCameraToggle(cameraRig);
 const cameraPanel = bindCameraPanel(cameraRig);
-simulation.reset(Number(inputs.count.value));
+simulation.reset(readControlValue("count"));
 rebuildFishMesh();
 resize();
 window.addEventListener("resize", resize);
 renderer.setAnimationLoop(animate);
 
 function bindControls() {
-  for (const [key, input] of Object.entries(inputs)) {
-    input.addEventListener("input", () => {
-      outputs[key].value = input.value;
-
-      if (key === "count") {
-        setFishCount(Number(input.value));
-        return;
-      }
-
-      if (key === "light") {
-        lighting.setIntensity(Number(input.value));
-        return;
-      }
-
-      simulationSettings.perceptionRadius = Number(inputs.perception.value);
-      simulationSettings.separateWeight = Number(inputs.separation.value);
-      simulationSettings.avoidCollisionWeight = Number(inputs.avoidance.value);
-      simulationSettings.maxTurnRate = Number(inputs.turnRate.value);
+  for (const [key, control] of Object.entries(controls)) {
+    syncControlOutput(control);
+    control.input.addEventListener("input", () => {
+      syncControlOutput(control);
+      applyControlChange(key);
     });
+  }
+}
+
+function applyControlChange(key) {
+  if (key === "count") {
+    setFishCount(readControlValue(key));
+    return;
+  }
+
+  if (key === "light") {
+    lighting.setIntensity(readControlValue(key));
+    return;
+  }
+
+  applySimulationSettingsFromControls();
+}
+
+function applySimulationSettingsFromControls() {
+  for (const [key, settingName] of Object.entries(simulationControlSettings)) {
+    simulationSettings[settingName] = readControlValue(key);
   }
 }
 
@@ -125,22 +131,22 @@ function animate() {
 }
 
 function resize() {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+  const width = Math.max(1, window.innerWidth);
+  const height = Math.max(1, window.innerHeight);
   cameraRig.resize(width, height);
   renderer.setSize(width, height, false);
   cameraPanel.update();
 }
 
 function bindCameraPanel(rig) {
-  const modeOutput = document.querySelector("#camera-mode");
-  const copyButton = document.querySelector("#copy-camera-json");
-  const copyStatus = document.querySelector("#copy-camera-status");
+  const modeOutput = getRequiredElement("#camera-mode");
+  const copyButton = getRequiredElement("#copy-camera-json");
+  const copyStatus = getRequiredElement("#copy-camera-status");
   const transformOutputs = {
-    position: document.querySelector("#camera-position"),
-    rotation: document.querySelector("#camera-rotation"),
-    quaternion: document.querySelector("#camera-quaternion"),
-    up: document.querySelector("#camera-up"),
+    position: getRequiredElement("#camera-position"),
+    rotation: getRequiredElement("#camera-rotation"),
+    quaternion: getRequiredElement("#camera-quaternion"),
+    up: getRequiredElement("#camera-up"),
   };
   let copyStatusTimeout = 0;
 
@@ -197,6 +203,10 @@ function readCameraTransformSnapshot(rig) {
 }
 
 async function copyText(text) {
+  if (!navigator.clipboard?.writeText) {
+    return fallbackCopyText(text);
+  }
+
   try {
     await navigator.clipboard.writeText(text);
     return true;
@@ -212,6 +222,7 @@ function fallbackCopyText(text) {
   textarea.style.position = "fixed";
   textarea.style.top = "-999px";
   document.body.append(textarea);
+  textarea.focus();
   textarea.select();
 
   try {
@@ -247,4 +258,48 @@ function formatCameraNumber(value) {
 
 function roundCameraNumber(value) {
   return Number(value.toFixed(4));
+}
+
+function createControl(inputSelector, outputSelector) {
+  return {
+    input: getRequiredInput(inputSelector),
+    output: getRequiredElement(outputSelector),
+  };
+}
+
+function syncControlOutput({ input, output }) {
+  output.value = input.value;
+}
+
+function readControlValue(key) {
+  return readInputNumber(controls[key].input);
+}
+
+function readInputNumber(input) {
+  if (Number.isFinite(input.valueAsNumber)) {
+    return input.valueAsNumber;
+  }
+
+  const defaultValue = Number(input.defaultValue);
+  return Number.isFinite(defaultValue) ? defaultValue : 0;
+}
+
+function getRequiredElement(selector) {
+  const element = document.querySelector(selector);
+
+  if (!element) {
+    throw new Error(`Missing required element: ${selector}`);
+  }
+
+  return element;
+}
+
+function getRequiredInput(selector) {
+  const element = getRequiredElement(selector);
+
+  if (!(element instanceof HTMLInputElement)) {
+    throw new Error(`Expected ${selector} to be an input element.`);
+  }
+
+  return element;
 }

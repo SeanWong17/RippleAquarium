@@ -2,8 +2,12 @@ import * as THREE from "three";
 import { aquariumFloorY, aquariumSize, waterLevelY } from "./config.js";
 
 export function createRenderer(canvas) {
+  if (!canvas) {
+    throw new Error("A canvas element is required to create the renderer.");
+  }
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;

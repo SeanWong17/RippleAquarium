@@ -23,21 +23,24 @@ export class FishSchoolSimulation {
   }
 
   reset(count, seed = 42) {
+    const targetCount = normalizeFishCount(count, 0);
     this.fish.length = 0;
     this.random = mulberry32(seed);
 
-    for (let i = 0; i < count; i += 1) {
+    for (let i = 0; i < targetCount; i += 1) {
       this.fish.push(this.createFish());
     }
   }
 
   setCount(count) {
-    if (count < this.fish.length) {
-      this.fish.length = count;
+    const targetCount = normalizeFishCount(count, this.fish.length);
+
+    if (targetCount < this.fish.length) {
+      this.fish.length = targetCount;
       return;
     }
 
-    while (this.fish.length < count) {
+    while (this.fish.length < targetCount) {
       this.fish.push(this.createFish());
     }
   }
@@ -314,4 +317,12 @@ export class FishSchoolSimulation {
       Math.abs(point.z) <= this.aquariumHalfSize.z - inset
     );
   }
+}
+
+function normalizeFishCount(count, fallback) {
+  if (!Number.isFinite(count)) {
+    return fallback;
+  }
+
+  return Math.max(0, Math.floor(count));
 }
