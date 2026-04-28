@@ -20,10 +20,16 @@ export function createScene() {
 }
 
 export function addLighting(scene) {
-  const hemiLight = new THREE.HemisphereLight(0x9fd8ff, 0x1b3024, 2.6);
+  const hemiBaseIntensity = 2.6;
+  const sunBaseIntensity = 2.2;
+  const hemiLight = new THREE.HemisphereLight(
+    0x9fd8ff,
+    0x1b3024,
+    hemiBaseIntensity,
+  );
   scene.add(hemiLight);
 
-  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  const sun = new THREE.DirectionalLight(0xffffff, sunBaseIntensity);
   sun.position.set(0.8, 15, 0.6);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -35,6 +41,13 @@ export function addLighting(scene) {
   sun.shadow.camera.far = 42;
   sun.shadow.camera.updateProjectionMatrix();
   scene.add(sun);
+
+  return {
+    setIntensity(multiplier) {
+      hemiLight.intensity = hemiBaseIntensity * multiplier;
+      sun.intensity = sunBaseIntensity * multiplier;
+    },
+  };
 }
 
 export function addAquarium(scene) {
@@ -110,20 +123,26 @@ export function addObstacles(scene, obstacles) {
     color: 0xb8584c,
     roughness: 0.52,
     metalness: 0.08,
-    transparent: true,
-    opacity: 0.82,
   });
 
   for (const obstacle of obstacles) {
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(obstacle.radius, 32, 18),
-      obstacleMaterial,
-    );
+    const mesh = new THREE.Mesh(createObstacleGeometry(obstacle), obstacleMaterial);
     mesh.position.copy(obstacle.position);
+    if (obstacle.rotationY) {
+      mesh.rotation.y = obstacle.rotationY;
+    }
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
   }
+}
+
+function createObstacleGeometry(obstacle) {
+  if (obstacle.shape === "box" || obstacle.shape === "plate") {
+    return new THREE.BoxGeometry(obstacle.size.x, obstacle.size.y, obstacle.size.z);
+  }
+
+  return new THREE.SphereGeometry(obstacle.radius, 32, 18);
 }
 
 function addBubbleColumns(scene) {

@@ -34,8 +34,18 @@ export const simulationSettings = {
 
 export const obstacles = [
   { position: new THREE.Vector3(-4.2, -0.4, -2.4), radius: 1.25 },
-  { position: new THREE.Vector3(3.8, 1.2, -1.2), radius: 1.45 },
-  { position: new THREE.Vector3(-1.1, 2.2, 3.3), radius: 1.05 },
+  {
+    position: new THREE.Vector3(3.8, 1.2, -1.2),
+    radius: 1.45,
+    shape: "box",
+    size: new THREE.Vector3(2.3, 2.3, 2.3),
+  },
+  {
+    position: new THREE.Vector3(-1.1, 2.2, 3.3),
+    radius: 1.75,
+    shape: "plate",
+    size: new THREE.Vector3(0.24, 2.8, 3.4),
+  },
   { position: new THREE.Vector3(2.1, -2.7, 3.1), radius: 1.25 },
   { position: new THREE.Vector3(0, 0, 0), radius: 1.65 },
 ];

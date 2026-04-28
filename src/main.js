@@ -40,6 +40,7 @@ const inputs = {
   separation: document.querySelector("#separation"),
   avoidance: document.querySelector("#avoidance"),
   turnRate: document.querySelector("#turn-rate"),
+  light: document.querySelector("#light"),
 };
 
 const outputs = {
@@ -48,9 +49,11 @@ const outputs = {
   separation: document.querySelector("#separation-value"),
   avoidance: document.querySelector("#avoidance-value"),
   turnRate: document.querySelector("#turn-rate-value"),
+  light: document.querySelector("#light-value"),
 };
 
-addLighting(scene);
+const lighting = addLighting(scene);
+lighting.setIntensity(Number(inputs.light.value));
 const aquariumEffects = addAquarium(scene);
 addObstacles(scene, obstacles);
 bindControls();
@@ -66,7 +69,12 @@ function bindControls() {
       outputs[key].value = input.value;
 
       if (key === "count") {
-        resetFish(Number(input.value));
+        setFishCount(Number(input.value));
+        return;
+      }
+
+      if (key === "light") {
+        lighting.setIntensity(Number(input.value));
         return;
       }
 
@@ -84,13 +92,21 @@ function bindControls() {
 
 function resetFish(count) {
   simulation.reset(count);
+  rebuildFishMesh();
+}
 
+function setFishCount(count) {
+  simulation.setCount(count);
+  rebuildFishMesh();
+}
+
+function rebuildFishMesh() {
   if (fishMesh) {
     scene.remove(fishMesh);
     disposeFishMesh(fishMesh);
   }
 
-  fishMesh = createFishMesh(count);
+  fishMesh = createFishMesh(simulation.fish.length);
   scene.add(fishMesh);
   updateFishInstances(fishMesh, simulation.fish);
   cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex]);

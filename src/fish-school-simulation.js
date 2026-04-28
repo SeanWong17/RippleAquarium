@@ -12,6 +12,7 @@ export class FishSchoolSimulation {
     this.obstacles = obstacles;
     this.settings = settings;
     this.fish = [];
+    this.random = mulberry32(42);
     this.rayDirections = createRayDirections(300);
 
     this.tmpVecA = new THREE.Vector3();
@@ -23,21 +24,37 @@ export class FishSchoolSimulation {
 
   reset(count, seed = 42) {
     this.fish.length = 0;
-    const random = mulberry32(seed);
+    this.random = mulberry32(seed);
 
     for (let i = 0; i < count; i += 1) {
-      const position = randomPointInAquarium(random, this.aquariumHalfSize, 0.62);
-      const direction = randomPointInSphere(random, 1).normalize();
-      const speed = THREE.MathUtils.lerp(
-        this.settings.minSpeed,
-        this.settings.maxSpeed,
-        random(),
-      );
-      this.fish.push({
-        position,
-        velocity: direction.multiplyScalar(speed),
-      });
+      this.fish.push(this.createFish());
     }
+  }
+
+  setCount(count) {
+    if (count < this.fish.length) {
+      this.fish.length = count;
+      return;
+    }
+
+    while (this.fish.length < count) {
+      this.fish.push(this.createFish());
+    }
+  }
+
+  createFish() {
+    const position = randomPointInAquarium(this.random, this.aquariumHalfSize, 0.62);
+    const direction = randomPointInSphere(this.random, 1).normalize();
+    const speed = THREE.MathUtils.lerp(
+      this.settings.minSpeed,
+      this.settings.maxSpeed,
+      this.random(),
+    );
+
+    return {
+      position,
+      velocity: direction.multiplyScalar(speed),
+    };
   }
 
   update(dt, options = {}) {
