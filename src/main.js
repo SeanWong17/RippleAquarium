@@ -37,13 +37,21 @@ const worldSize = worldHalfSize.clone().multiplyScalar(2);
 const floorY = -worldHalfSize.y;
 const clock = new THREE.Clock();
 const fishGeometry = new THREE.ConeGeometry(0.13, 0.58, 14, 1);
+const fishVertexColors = new Float32Array(
+  fishGeometry.attributes.position.count * 3,
+).fill(1);
+fishGeometry.setAttribute("color", new THREE.BufferAttribute(fishVertexColors, 3));
 fishGeometry.computeVertexNormals();
 
 const fishMaterial = new THREE.MeshStandardMaterial({
-  color: 0x5fe3b1,
+  color: 0xffffff,
   roughness: 0.42,
   metalness: 0.05,
+  vertexColors: true,
 });
+const fishColor = new THREE.Color(0x5fe3b1);
+const highlightedFishColor = new THREE.Color(0xff7ab8);
+const highlightedFishIndex = 0;
 
 const obstacleMaterial = new THREE.MeshStandardMaterial({
   color: 0xb8584c,
@@ -216,7 +224,12 @@ function resetBoids(count) {
     const speed = THREE.MathUtils.lerp(settings.minSpeed, settings.maxSpeed, random());
     const velocity = direction.multiplyScalar(speed);
     boids.push({ position, velocity });
+    fishMesh.setColorAt(
+      i,
+      i === highlightedFishIndex ? highlightedFishColor : fishColor,
+    );
   }
+  fishMesh.instanceColor.needsUpdate = true;
 
   updateInstances();
 }
