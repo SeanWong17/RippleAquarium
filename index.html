@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js Boids</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="scene"></canvas>
+      <section class="panel" aria-label="Boids controls">
+        <div class="panel-header">
+          <div>
+            <h1>Boids</h1>
+            <p>Three.js flock simulation</p>
+          </div>
+          <button id="reset" type="button">Reset</button>
+        </div>
+
+        <label>
+          Fish
+          <input id="count" type="range" min="40" max="260" step="10" value="160" />
+          <output id="count-value">160</output>
+        </label>
+
+        <label>
+          Perception
+          <input id="perception" type="range" min="1.2" max="5.2" step="0.1" value="2.7" />
+          <output id="perception-value">2.7</output>
+        </label>
+
+        <label>
+          Separation
+          <input id="separation" type="range" min="0.4" max="3" step="0.1" value="1.35" />
+          <output id="separation-value">1.35</output>
+        </label>
+
+        <label>
+          Avoidance
+          <input id="avoidance" type="range" min="2" max="18" step="0.5" value="10" />
+          <output id="avoidance-value">10</output>
+        </label>
+      </section>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
