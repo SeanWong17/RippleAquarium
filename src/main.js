@@ -58,7 +58,9 @@ const aquariumEffects = addAquarium(scene);
 addObstacles(scene, obstacles);
 bindControls();
 bindCameraToggle(cameraRig);
-resetFish(Number(inputs.count.value));
+const cameraPanel = bindCameraPanel(cameraRig);
+simulation.reset(Number(inputs.count.value));
+rebuildFishMesh();
 resize();
 window.addEventListener("resize", resize);
 renderer.setAnimationLoop(animate);
@@ -84,15 +86,6 @@ function bindControls() {
       simulationSettings.maxTurnRate = Number(inputs.turnRate.value);
     });
   }
-
-  document.querySelector("#reset").addEventListener("click", () => {
-    resetFish(Number(inputs.count.value));
-  });
-}
-
-function resetFish(count) {
-  simulation.reset(count);
-  rebuildFishMesh();
 }
 
 function setFishCount(count) {
@@ -127,6 +120,7 @@ function animate() {
   });
   cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex], dt);
   cameraRig.update();
+  cameraPanel.update();
   renderer.render(scene, cameraRig.activeCamera);
 }
 
@@ -135,4 +129,122 @@ function resize() {
   const height = window.innerHeight;
   cameraRig.resize(width, height);
   renderer.setSize(width, height, false);
+  cameraPanel.update();
+}
+
+function bindCameraPanel(rig) {
+  const modeOutput = document.querySelector("#camera-mode");
+  const copyButton = document.querySelector("#copy-camera-json");
+  const copyStatus = document.querySelector("#copy-camera-status");
+  const transformOutputs = {
+    position: document.querySelector("#camera-position"),
+    rotation: document.querySelector("#camera-rotation"),
+    quaternion: document.querySelector("#camera-quaternion"),
+    up: document.querySelector("#camera-up"),
+  };
+  let copyStatusTimeout = 0;
+
+  copyButton.addEventListener("click", async () => {
+    const json = JSON.stringify(readCameraTransformSnapshot(rig), null, 2);
+    const copied = await copyText(json);
+    copyStatus.textContent = copied ? "Copied camera JSON" : "Copy failed";
+    window.clearTimeout(copyStatusTimeout);
+    copyStatusTimeout = window.setTimeout(() => {
+      copyStatus.textContent = "";
+    }, 1800);
+  });
+
+  function update() {
+    const camera = rig.activeCamera;
+
+    modeOutput.textContent = `mode: ${rig.mode}`;
+    syncTransformOutputs(camera);
+  }
+
+  function syncTransformOutputs(camera) {
+    transformOutputs.position.textContent = formatVector(camera.position);
+    transformOutputs.rotation.textContent = formatRotation(camera.rotation);
+    transformOutputs.quaternion.textContent = formatQuaternion(camera.quaternion);
+    transformOutputs.up.textContent = formatVector(camera.up);
+  }
+
+  update();
+  return { update };
+}
+
+function readCameraTransformSnapshot(rig) {
+  const camera = rig.activeCamera;
+
+  return {
+    mode: rig.mode,
+    transform: {
+      position: vectorToJSON(camera.position),
+      rotation: {
+        x: roundCameraNumber(camera.rotation.x),
+        y: roundCameraNumber(camera.rotation.y),
+        z: roundCameraNumber(camera.rotation.z),
+        order: camera.rotation.order,
+      },
+      quaternion: {
+        x: roundCameraNumber(camera.quaternion.x),
+        y: roundCameraNumber(camera.quaternion.y),
+        z: roundCameraNumber(camera.quaternion.z),
+        w: roundCameraNumber(camera.quaternion.w),
+      },
+      up: vectorToJSON(camera.up),
+    },
+  };
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return fallbackCopyText(text);
+  }
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-999px";
+  document.body.append(textarea);
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } finally {
+    textarea.remove();
+  }
+}
+
+function formatVector(vector) {
+  return `${formatCameraNumber(vector.x)}, ${formatCameraNumber(vector.y)}, ${formatCameraNumber(vector.z)}`;
+}
+
+function formatRotation(rotation) {
+  return `${formatCameraNumber(rotation.x)}, ${formatCameraNumber(rotation.y)}, ${formatCameraNumber(rotation.z)} ${rotation.order}`;
+}
+
+function formatQuaternion(quaternion) {
+  return `${formatCameraNumber(quaternion.x)}, ${formatCameraNumber(quaternion.y)}, ${formatCameraNumber(quaternion.z)}, ${formatCameraNumber(quaternion.w)}`;
+}
+
+function vectorToJSON(vector) {
+  return {
+    x: roundCameraNumber(vector.x),
+    y: roundCameraNumber(vector.y),
+    z: roundCameraNumber(vector.z),
+  };
+}
+
+function formatCameraNumber(value) {
+  return String(roundCameraNumber(value));
+}
+
+function roundCameraNumber(value) {
+  return Number(value.toFixed(4));
 }
