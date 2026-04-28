@@ -73,7 +73,6 @@ export class FishSchoolSimulation {
         align: new THREE.Vector3(),
         cohesion: new THREE.Vector3(),
         separation: new THREE.Vector3(),
-        target: new THREE.Vector3(),
         obstacle: new THREE.Vector3(),
         boundary: new THREE.Vector3(),
       } : null;
@@ -129,15 +128,6 @@ export class FishSchoolSimulation {
           components.cohesion.copy(cohesion);
           components.separation.copy(separation);
         }
-      }
-
-      const target = this.steerTowards(
-        this.tmpVecA.copy(fish.position).multiplyScalar(-1),
-        fish.velocity,
-      ).multiplyScalar(this.settings.targetWeight);
-      acceleration.add(target);
-      if (components) {
-        components.target.copy(target);
       }
 
       const forward = this.tmpVecB.copy(fish.velocity).normalize();
