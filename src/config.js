@@ -16,7 +16,7 @@ export const fishConfig = {
 export const simulationSettings = {
   minSpeed: 2,
   maxSpeed: 5,
-  maxTurnRate: 3,
+  maxTurnRate: 1,
   perceptionRadius: 2.7,
   avoidanceRadius: 1,
   maxSteerForce: 3,

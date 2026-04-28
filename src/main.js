@@ -39,6 +39,7 @@ const inputs = {
   perception: document.querySelector("#perception"),
   separation: document.querySelector("#separation"),
   avoidance: document.querySelector("#avoidance"),
+  turnRate: document.querySelector("#turn-rate"),
 };
 
 const outputs = {
@@ -46,6 +47,7 @@ const outputs = {
   perception: document.querySelector("#perception-value"),
   separation: document.querySelector("#separation-value"),
   avoidance: document.querySelector("#avoidance-value"),
+  turnRate: document.querySelector("#turn-rate-value"),
 };
 
 addLighting(scene);
@@ -71,6 +73,7 @@ function bindControls() {
       simulationSettings.perceptionRadius = Number(inputs.perception.value);
       simulationSettings.separateWeight = Number(inputs.separation.value);
       simulationSettings.avoidCollisionWeight = Number(inputs.avoidance.value);
+      simulationSettings.maxTurnRate = Number(inputs.turnRate.value);
     });
   }
 
