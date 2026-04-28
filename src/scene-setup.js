@@ -19,7 +19,6 @@ export function createRenderer(canvas) {
 export function createScene() {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x081016);
-  scene.fog = new THREE.Fog(0x081016, 18, 42);
   return scene;
 }
 
