@@ -40,17 +40,28 @@ export class BoidSimulation {
     }
   }
 
-  update(dt) {
+  update(dt, options = {}) {
     const nextVelocities = new Array(this.boids.length);
     const nextPositions = new Array(this.boids.length);
+    let trace = null;
 
     for (let i = 0; i < this.boids.length; i += 1) {
       const boid = this.boids[i];
       const acceleration = new THREE.Vector3();
+      const components = options.traceIndex === i ? {
+        align: new THREE.Vector3(),
+        cohesion: new THREE.Vector3(),
+        separation: new THREE.Vector3(),
+        target: new THREE.Vector3(),
+        obstacle: new THREE.Vector3(),
+        boundary: new THREE.Vector3(),
+      } : null;
       const headingSum = new THREE.Vector3();
       const centerSum = new THREE.Vector3();
       const avoidanceSum = new THREE.Vector3();
       let neighborCount = 0;
+      let collisionAvoidanceActive = false;
+      let boundaryAvoidanceActive = false;
 
       for (let j = 0; j < this.boids.length; j += 1) {
         if (i === j) continue;
@@ -72,65 +83,103 @@ export class BoidSimulation {
 
       if (neighborCount > 0) {
         centerSum.multiplyScalar(1 / neighborCount);
-        acceleration.add(
-          this.steerTowards(headingSum, boid.velocity).multiplyScalar(
-            this.settings.alignWeight,
-          ),
+        const align = this.steerTowards(headingSum, boid.velocity).multiplyScalar(
+          this.settings.alignWeight,
         );
-        acceleration.add(
-          this.steerTowards(centerSum.sub(boid.position), boid.velocity).multiplyScalar(
-            this.settings.cohesionWeight,
-          ),
+        const cohesion = this.steerTowards(
+          centerSum.sub(boid.position),
+          boid.velocity,
+        ).multiplyScalar(
+          this.settings.cohesionWeight,
         );
-        acceleration.add(
-          this.steerTowards(avoidanceSum, boid.velocity).multiplyScalar(
-            this.settings.separateWeight,
-          ),
+        const separation = this.steerTowards(
+          avoidanceSum,
+          boid.velocity,
+        ).multiplyScalar(
+          this.settings.separateWeight,
         );
+
+        acceleration.add(align);
+        acceleration.add(cohesion);
+        acceleration.add(separation);
+
+        if (components) {
+          components.align.copy(align);
+          components.cohesion.copy(cohesion);
+          components.separation.copy(separation);
+        }
       }
 
-      acceleration.add(
-        this.steerTowards(
-          this.tmpVecA.copy(boid.position).multiplyScalar(-1),
-          boid.velocity,
-        ).multiplyScalar(this.settings.targetWeight),
-      );
+      const target = this.steerTowards(
+        this.tmpVecA.copy(boid.position).multiplyScalar(-1),
+        boid.velocity,
+      ).multiplyScalar(this.settings.targetWeight);
+      acceleration.add(target);
+      if (components) {
+        components.target.copy(target);
+      }
 
       const forward = this.tmpVecB.copy(boid.velocity).normalize();
       if (this.isHeadingForCollision(boid.position, forward)) {
+        collisionAvoidanceActive = true;
         const clearDirection = this.obstacleRays(boid.position, forward);
-        acceleration.add(
-          this.steerTowards(clearDirection, boid.velocity).multiplyScalar(
-            this.settings.avoidCollisionWeight,
-          ),
+        const obstacle = this.steerTowards(
+          clearDirection,
+          boid.velocity,
+        ).multiplyScalar(
+          this.settings.avoidCollisionWeight,
         );
+        acceleration.add(obstacle);
+        if (components) {
+          components.obstacle.copy(obstacle);
+        }
       }
 
       const boundary = this.boxBoundarySteer(boid.position, this.settings.boundaryMargin);
       if (boundary.lengthSq() > 0) {
-        acceleration.add(
-          this.steerTowards(boundary, boid.velocity).multiplyScalar(
-            this.settings.boundaryWeight,
-          ),
+        boundaryAvoidanceActive = true;
+        const boundaryForce = this.steerTowards(
+          boundary,
+          boid.velocity,
+        ).multiplyScalar(
+          this.settings.boundaryWeight,
         );
+        acceleration.add(boundaryForce);
+        if (components) {
+          components.boundary.copy(boundaryForce);
+        }
       }
 
-      const velocity = boid.velocity.clone().add(acceleration.multiplyScalar(dt));
+      const desiredVelocity = boid.velocity.clone().add(acceleration.multiplyScalar(dt));
       const speed = THREE.MathUtils.clamp(
-        velocity.length(),
+        desiredVelocity.length(),
         this.settings.minSpeed,
         this.settings.maxSpeed,
       );
-      velocity.normalize().multiplyScalar(speed);
+      desiredVelocity.normalize().multiplyScalar(speed);
+      const velocity = this.limitTurn(boid.velocity, desiredVelocity, dt);
 
       nextVelocities[i] = velocity;
       nextPositions[i] = boid.position.clone().addScaledVector(velocity, dt);
+
+      if (components) {
+        trace = {
+          components,
+          neighborCount,
+          collisionAvoidanceActive,
+          boundaryAvoidanceActive,
+          previousVelocity: boid.velocity.clone(),
+          nextVelocity: velocity.clone(),
+        };
+      }
     }
 
     for (let i = 0; i < this.boids.length; i += 1) {
       this.boids[i].velocity.copy(nextVelocities[i]);
       this.boids[i].position.copy(nextPositions[i]);
     }
+
+    return trace;
   }
 
   steerTowards(vector, velocity) {
@@ -140,6 +189,32 @@ export class BoidSimulation {
 
     const desired = vector.clone().normalize().multiplyScalar(this.settings.maxSpeed);
     return desired.sub(velocity).clampLength(0, this.settings.maxSteerForce);
+  }
+
+  limitTurn(currentVelocity, desiredVelocity, dt) {
+    const currentDirection = currentVelocity.clone().normalize();
+    const desiredDirection = desiredVelocity.clone().normalize();
+    const angle = currentDirection.angleTo(desiredDirection);
+    const maxAngle = this.settings.maxTurnRate * dt;
+
+    if (angle <= maxAngle || angle < 0.000001) {
+      return desiredVelocity;
+    }
+
+    const t = maxAngle / angle;
+    const sinAngle = Math.sin(angle);
+    let direction;
+
+    if (Math.abs(sinAngle) > 0.000001) {
+      direction = currentDirection
+        .multiplyScalar(Math.sin((1 - t) * angle) / sinAngle)
+        .add(desiredDirection.multiplyScalar(Math.sin(t * angle) / sinAngle))
+        .normalize();
+    } else {
+      direction = currentDirection.lerp(desiredDirection, t).normalize();
+    }
+
+    return direction.multiplyScalar(desiredVelocity.length());
   }
 
   isHeadingForCollision(position, forward) {

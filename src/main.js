@@ -7,6 +7,7 @@ import {
   disposeFishMesh,
   updateFishInstances,
 } from "./fish-renderer.js";
+import { createHeadingDebugger } from "./heading-debugger.js";
 import {
   addLighting,
   addObstacles,
@@ -20,6 +21,11 @@ const renderer = createRenderer(canvas);
 const scene = createScene();
 const clock = new THREE.Clock();
 const cameraRig = createCameraRig(renderer);
+const query = new URLSearchParams(window.location.search);
+const headingDebugger = createHeadingDebugger({
+  enabled: query.get("debugHeading") === "1",
+  frameLimit: Number(query.get("debugFrames")) || undefined,
+});
 const simulation = new BoidSimulation({
   worldHalfSize,
   obstacles,
@@ -89,8 +95,15 @@ function resetBoids(count) {
 
 function animate() {
   const dt = Math.min(clock.getDelta(), 1 / 30);
-  simulation.update(dt);
+  const trace = simulation.update(dt, {
+    traceIndex: headingDebugger?.traceIndex,
+  });
   updateFishInstances(fishMesh, simulation.boids);
+  headingDebugger?.sample({
+    dt,
+    boid: simulation.boids[fishConfig.highlightedIndex],
+    trace,
+  });
   cameraRig.updateFishCamera(simulation.boids[fishConfig.highlightedIndex]);
   cameraRig.update();
   renderer.render(scene, cameraRig.activeCamera);
