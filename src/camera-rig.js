@@ -7,6 +7,12 @@ const CAMERA_MODE = {
   fish: "fish",
 };
 
+const FISH_CAMERA_POSITION_RESPONSE = 10;
+const FISH_CAMERA_DIRECTION_RESPONSE = 5;
+const FISH_CAMERA_LOOK_AHEAD = 3.6;
+const worldUp = new THREE.Vector3(0, 1, 0);
+const fallbackUp = new THREE.Vector3(1, 0, 0);
+
 export function createCameraRig(renderer) {
   const orbitCamera = new THREE.PerspectiveCamera(55, 1, 0.1, 120);
   orbitCamera.position.set(0, 8.5, 20);
@@ -23,8 +29,12 @@ export function createCameraRig(renderer) {
     position: new THREE.Vector3(),
     direction: new THREE.Vector3(0, 0, -1),
   };
+  const smoothedFishPosition = new THREE.Vector3();
+  const smoothedFishDirection = new THREE.Vector3(0, 0, -1);
   const target = new THREE.Vector3();
+  const up = new THREE.Vector3();
   let mode = CAMERA_MODE.orbit;
+  let fishCameraInitialized = false;
 
   return {
     get activeCamera() {
@@ -46,16 +56,39 @@ export function createCameraRig(renderer) {
       }
     },
 
-    updateFishCamera(boid) {
+    updateFishCamera(boid, dt = 0) {
       if (!boid) return;
 
       getFishHeadPose(boid, pose);
-      fishCamera.position.copy(pose.position);
-      fishCamera.up.set(0, 1, 0);
-      if (Math.abs(fishCamera.up.dot(pose.direction)) > 0.94) {
-        fishCamera.up.set(1, 0, 0);
+
+      if (!fishCameraInitialized || dt <= 0) {
+        smoothedFishPosition.copy(pose.position);
+        smoothedFishDirection.copy(pose.direction);
+        fishCameraInitialized = true;
+      } else {
+        const positionAlpha = 1 - Math.exp(-FISH_CAMERA_POSITION_RESPONSE * dt);
+        const directionAlpha = 1 - Math.exp(-FISH_CAMERA_DIRECTION_RESPONSE * dt);
+        smoothedFishPosition.lerp(pose.position, positionAlpha);
+        smoothedFishDirection.lerp(pose.direction, directionAlpha).normalize();
       }
-      fishCamera.lookAt(target.copy(fishCamera.position).add(pose.direction));
+
+      fishCamera.position.copy(smoothedFishPosition);
+      up.copy(worldUp).addScaledVector(
+        smoothedFishDirection,
+        -worldUp.dot(smoothedFishDirection),
+      );
+      if (up.lengthSq() < 0.0001) {
+        up.copy(fallbackUp).addScaledVector(
+          smoothedFishDirection,
+          -fallbackUp.dot(smoothedFishDirection),
+        );
+      }
+      fishCamera.up.copy(up.normalize());
+      fishCamera.lookAt(
+        target
+          .copy(smoothedFishPosition)
+          .addScaledVector(smoothedFishDirection, FISH_CAMERA_LOOK_AHEAD),
+      );
     },
 
     resize(width, height) {

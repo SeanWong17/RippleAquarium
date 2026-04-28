@@ -107,7 +107,7 @@ function animate() {
     boid: simulation.boids[fishConfig.highlightedIndex],
     trace,
   });
-  cameraRig.updateFishCamera(simulation.boids[fishConfig.highlightedIndex]);
+  cameraRig.updateFishCamera(simulation.boids[fishConfig.highlightedIndex], dt);
   cameraRig.update();
   renderer.render(scene, cameraRig.activeCamera);
 }

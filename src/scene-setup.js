@@ -26,7 +26,14 @@ export function addLighting(scene) {
   const sun = new THREE.DirectionalLight(0xffffff, 2.2);
   sun.position.set(8, 12, 6);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -18;
+  sun.shadow.camera.right = 18;
+  sun.shadow.camera.top = 18;
+  sun.shadow.camera.bottom = -18;
+  sun.shadow.camera.near = 0.5;
+  sun.shadow.camera.far = 42;
+  sun.shadow.camera.updateProjectionMatrix();
   scene.add(sun);
 }
 
@@ -70,7 +77,7 @@ export function addWorldBounds(scene) {
     }),
   );
   floor.rotation.x = -Math.PI / 2;
-  floor.position.y = floorY - 0.03;
+  floor.position.y = floorY - 0.008;
   floor.receiveShadow = true;
   scene.add(floor);
 
