@@ -35,6 +35,10 @@ canvas {
   backdrop-filter: blur(14px);
 }
 
+#app[data-ui-panels="hidden"] .panel {
+  display: none;
+}
+
 .panel-header {
   display: flex;
   align-items: center;

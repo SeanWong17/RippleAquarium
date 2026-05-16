@@ -5,6 +5,7 @@ import { aquariumHalfSize, fishConfig, obstacles, simulationSettings } from "./c
 import {
   createFishMesh,
   disposeFishMesh,
+  loadFishModel,
   updateFishInstances,
 } from "./fish-renderer.js";
 import { createHeadingDebugger } from "./heading-debugger.js";
@@ -17,6 +18,7 @@ import {
 } from "./scene-setup.js";
 
 const STEP_FRAME_SECONDS = 1 / 60;
+const app = getRequiredElement("#app");
 const canvas = getRequiredElement("#scene");
 const renderer = createRenderer(canvas);
 const scene = createScene();
@@ -62,7 +64,9 @@ applySimulationSettingsFromControls();
 bindControls();
 bindPlaybackControls();
 bindCameraToggle(cameraRig);
+bindUiPanelShortcuts();
 const cameraPanel = bindCameraPanel(cameraRig);
+await loadFishModel();
 simulation.reset(readControlValue("count"));
 rebuildFishMesh();
 resize();
@@ -98,6 +102,20 @@ function bindPlaybackControls() {
   });
 
   syncPlaybackControls(toggleButton, stepButton);
+}
+
+function bindUiPanelShortcuts() {
+  window.addEventListener("keydown", (event) => {
+    if (event.repeat) return;
+
+    if (event.key === "2") {
+      event.preventDefault();
+      app.dataset.uiPanels = "hidden";
+    } else if (event.key === "1") {
+      event.preventDefault();
+      app.dataset.uiPanels = "visible";
+    }
+  });
 }
 
 function syncPlaybackControls(toggleButton, stepButton) {

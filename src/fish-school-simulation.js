@@ -1,5 +1,10 @@
 import * as THREE from "three";
 import {
+  createFishMotionScratch,
+  createFishMotionState,
+  updateFishMotionState,
+} from "./fish/motion-state.js";
+import {
   createRayDirections,
   mulberry32,
   randomPointInAquarium,
@@ -14,6 +19,7 @@ export class FishSchoolSimulation {
     this.fish = [];
     this.random = mulberry32(42);
     this.rayDirections = createRayDirections(300);
+    this.fishMotionScratch = createFishMotionScratch();
 
     this.tmpVecA = new THREE.Vector3();
     this.tmpVecB = new THREE.Vector3();
@@ -29,7 +35,7 @@ export class FishSchoolSimulation {
     this.random = mulberry32(seed);
 
     for (let i = 0; i < targetCount; i += 1) {
-      this.fish.push(this.createFish());
+      this.fish.push(this.createFish(i));
     }
   }
 
@@ -42,11 +48,11 @@ export class FishSchoolSimulation {
     }
 
     while (this.fish.length < targetCount) {
-      this.fish.push(this.createFish());
+      this.fish.push(this.createFish(this.fish.length));
     }
   }
 
-  createFish() {
+  createFish(index = this.fish.length) {
     const position = randomPointInAquarium(this.random, this.aquariumHalfSize, 0.62);
     const direction = randomPointInSphere(this.random, 1).normalize();
     const speed = THREE.MathUtils.lerp(
@@ -58,7 +64,12 @@ export class FishSchoolSimulation {
     return {
       position,
       velocity: direction.multiplyScalar(speed),
+      ...this.createMotionState(index),
     };
+  }
+
+  createMotionState(index = this.fish.length) {
+    return createFishMotionState(index);
   }
 
   update(dt, options = {}) {
@@ -186,8 +197,10 @@ export class FishSchoolSimulation {
     }
 
     for (let i = 0; i < this.fish.length; i += 1) {
-      this.fish[i].velocity.copy(nextVelocities[i]);
-      this.fish[i].position.copy(nextPositions[i]);
+      const fish = this.fish[i];
+      updateFishMotionState(fish, nextVelocities[i], dt, this.fishMotionScratch);
+      fish.velocity.copy(nextVelocities[i]);
+      fish.position.copy(nextPositions[i]);
     }
 
     return trace;
