@@ -22,6 +22,55 @@ canvas {
   height: 100%;
 }
 
+.social-tag {
+  position: fixed;
+  z-index: 2;
+  top: 16px;
+  left: 50%;
+  max-width: calc(100vw - 32px);
+  padding: 0;
+  transform: translateX(-50%);
+  color: rgb(238 242 247 / 90%);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 72%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.model-loading {
+  position: fixed;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition:
+    opacity 180ms ease,
+    visibility 180ms ease;
+  pointer-events: none;
+}
+
+.model-loading.is-complete {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.model-loading span {
+  display: block;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1;
+  text-align: center;
+}
+
 .panel {
   position: fixed;
   top: 18px;
@@ -162,6 +211,11 @@ input[type="range"] {
 }
 
 @media (max-width: 620px) {
+  .social-tag {
+    top: 76px;
+    font-size: 11px;
+  }
+
   .panel {
     top: 12px;
     left: 12px;

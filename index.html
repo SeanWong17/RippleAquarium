@@ -17,8 +17,20 @@
   <body>
     <main id="app">
       <canvas id="scene"></canvas>
+      <div class="social-tag" aria-label="Social account">
+        抖音/小红书 @浙大猫学长
+      </div>
+      <div
+        id="model-loading"
+        class="model-loading"
+        role="status"
+        aria-live="polite"
+        aria-label="Loading fish model"
+      >
+        <span>loading..</span>
+      </div>
       <section class="panel" aria-label="Fish tank controls">
-        <div class="playback-controls" aria-label="Simulation playback controls">
+        <div class="playback-controls" aria-label="Simulation playback controls" hidden>
           <button id="playback-toggle" class="toggle-button" type="button" aria-pressed="false">
             Pause
           </button>
@@ -31,38 +43,38 @@
           <output id="count-value">60</output>
         </label>
 
-        <label>
+        <label hidden>
           Perception
           <input id="perception" type="range" min="1.2" max="5.2" step="0.1" value="2.7" />
           <output id="perception-value">2.7</output>
         </label>
 
-        <label>
+        <label hidden>
           Separation
           <input id="separation" type="range" min="0.4" max="3" step="0.1" value="1.35" />
           <output id="separation-value">1.35</output>
         </label>
 
-        <label>
+        <label hidden>
           Avoidance
           <input id="avoidance" type="range" min="2" max="18" step="0.5" value="10" />
           <output id="avoidance-value">10</output>
         </label>
 
-        <label>
+        <label hidden>
           Turn rate
           <input id="turn-rate" type="range" min="0.2" max="20" step="0.1" value="4" />
           <output id="turn-rate-value">4</output>
         </label>
 
-        <label>
+        <label hidden>
           Light
           <input id="light" type="range" min="0.2" max="2.5" step="0.05" value="1.6" />
           <output id="light-value">1.6</output>
         </label>
       </section>
 
-      <section class="panel camera-panel" aria-label="Camera controls">
+      <section class="panel camera-panel" aria-label="Camera controls" hidden>
         <div class="panel-header">
           <button id="copy-camera-json" type="button">Copy JSON</button>
         </div>

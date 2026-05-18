@@ -15,7 +15,7 @@ const fallbackUp = new THREE.Vector3(1, 0, 0);
 
 export function createCameraRig(renderer) {
   const orbitCamera = new THREE.PerspectiveCamera(55, 1, 0.1, 120);
-  orbitCamera.position.set(0, 8.5, 20);
+  orbitCamera.position.set(0, 10, 35);
 
   const fishCamera = new THREE.PerspectiveCamera(74, 1, 0.03, 90);
 

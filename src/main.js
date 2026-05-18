@@ -66,7 +66,12 @@ bindPlaybackControls();
 bindCameraToggle(cameraRig);
 bindUiPanelShortcuts();
 const cameraPanel = bindCameraPanel(cameraRig);
-await loadFishModel();
+const modelLoading = bindModelLoading();
+try {
+  await loadFishModel();
+} finally {
+  modelLoading.finish();
+}
 simulation.reset(readControlValue("count"));
 rebuildFishMesh();
 resize();
@@ -226,6 +231,18 @@ function bindCameraPanel(rig) {
   });
 
   return { update() {} };
+}
+
+function bindModelLoading() {
+  const container = getRequiredElement("#model-loading");
+
+  return {
+    finish() {
+      container.classList.add("is-complete");
+      container.setAttribute("aria-hidden", "true");
+      container.hidden = true;
+    },
+  };
 }
 
 function readCameraTransformSnapshot(rig) {
