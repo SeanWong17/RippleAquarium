@@ -1,11 +1,20 @@
 import * as THREE from "three";
 import { FishSchoolSimulation } from "./fish-school-simulation.js";
 import { bindCameraToggle, createCameraRig } from "./camera-rig.js";
-import { aquariumHalfSize, fishConfig, obstacles, simulationSettings } from "./config.js";
 import {
+  aquariumHalfSize,
+  coneConfig,
+  fishConfig,
+  obstacles,
+  simulationSettings,
+} from "./config.js";
+import {
+  createConeSchoolMesh,
   createFishMesh,
+  disposeConeSchoolMesh,
   disposeFishMesh,
   loadFishModel,
+  updateConeSchoolInstances,
   updateFishInstances,
 } from "./fish-renderer.js";
 import { createHeadingDebugger } from "./heading-debugger.js";
@@ -37,6 +46,7 @@ const simulation = new FishSchoolSimulation({
 
 const controls = {
   count: createControl("#count", "#count-value"),
+  cones: createControl("#cones", "#cones-value"),
   perception: createControl("#perception", "#perception-value"),
   separation: createControl("#separation", "#separation-value"),
   avoidance: createControl("#avoidance", "#avoidance-value"),
@@ -52,6 +62,7 @@ const simulationControlSettings = {
 };
 
 let fishMesh = null;
+let coneSchoolMesh = null;
 let simulationPaused = false;
 let pendingSimulationSteps = 0;
 let simulationTime = 0;
@@ -73,6 +84,7 @@ try {
   modelLoading.finish();
 }
 simulation.reset(readControlValue("count"));
+syncConeControlLimit();
 rebuildFishMesh();
 resize();
 window.addEventListener("resize", resize);
@@ -135,6 +147,11 @@ function applyControlChange(key) {
     return;
   }
 
+  if (key === "cones") {
+    setConeCount(readControlValue(key));
+    return;
+  }
+
   if (key === "light") {
     lighting.setIntensity(readControlValue(key));
     return;
@@ -151,6 +168,13 @@ function applySimulationSettingsFromControls() {
 
 function setFishCount(count) {
   simulation.setCount(count);
+  syncConeControlLimit();
+  rebuildFishMesh();
+}
+
+function setConeCount(count) {
+  coneConfig.count = normalizeConeCount(count);
+  syncConeControlLimit();
   rebuildFishMesh();
 }
 
@@ -159,10 +183,20 @@ function rebuildFishMesh() {
     scene.remove(fishMesh);
     disposeFishMesh(fishMesh);
   }
+  if (coneSchoolMesh) {
+    scene.remove(coneSchoolMesh);
+    disposeConeSchoolMesh(coneSchoolMesh);
+  }
 
-  fishMesh = createFishMesh(simulation.fish.length);
+  const schools = splitRenderableSchools(simulation.fish);
+
+  fishMesh = createFishMesh(schools.fish.length);
   scene.add(fishMesh);
-  updateFishInstances(fishMesh, simulation.fish);
+  updateFishInstances(fishMesh, schools.fish);
+
+  coneSchoolMesh = createConeSchoolMesh(schools.cones.length);
+  scene.add(coneSchoolMesh);
+  updateConeSchoolInstances(coneSchoolMesh, schools.cones);
   cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex]);
 }
 
@@ -176,7 +210,9 @@ function animate() {
     trace = simulation.update(simulationDt, {
       traceIndex: headingDebugger?.traceIndex,
     });
-    updateFishInstances(fishMesh, simulation.fish);
+    const schools = splitRenderableSchools(simulation.fish);
+    updateFishInstances(fishMesh, schools.fish);
+    updateConeSchoolInstances(coneSchoolMesh, schools.cones);
     aquariumEffects.update(simulationTime);
     headingDebugger?.sample({
       dt: simulationDt,
@@ -192,6 +228,41 @@ function animate() {
   cameraRig.update();
   cameraPanel.update();
   renderer.render(scene, cameraRig.activeCamera);
+}
+
+function splitRenderableSchools(fish) {
+  const coneCount = Math.min(
+    coneConfig.count,
+    Math.max(0, fish.length - 1),
+  );
+  const fishCount = fish.length - coneCount;
+
+  return {
+    fish: fish.slice(0, fishCount),
+    cones: fish.slice(fishCount),
+  };
+}
+
+function syncConeControlLimit() {
+  const control = controls.cones;
+  const maxConeCount = Math.max(0, simulation.fish.length - 1);
+  const coneCount = Math.min(
+    normalizeConeCount(readInputNumber(control.input)),
+    maxConeCount,
+  );
+
+  control.input.max = String(maxConeCount);
+  control.input.value = String(coneCount);
+  coneConfig.count = coneCount;
+  syncControlOutput(control);
+}
+
+function normalizeConeCount(count) {
+  if (!Number.isFinite(count)) {
+    return coneConfig.count;
+  }
+
+  return Math.max(0, Math.floor(count));
 }
 
 function getSimulationDelta(frameDt) {

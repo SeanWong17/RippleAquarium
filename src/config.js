@@ -31,6 +31,19 @@ export const fishConfig = {
   swimTurnCurveStart: 0.08,
 };
 
+export const coneConfig = {
+  count: 10,
+  radius: 0.3,
+  length: 0.8,
+  renderScale: 1,
+  radialSegments: 36,
+  heightSegments: 3,
+  bodyColor: new THREE.Color(0xf2f6ff),
+  outlineColor: new THREE.Color(0x101010),
+  outlineScale: 1.09,
+  renderBoundsRadius: 18,
+};
+
 export const simulationSettings = {
   minSpeed: 3,
   maxSpeed: 7.5,
