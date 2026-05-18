@@ -22,24 +22,6 @@ canvas {
   height: 100%;
 }
 
-.social-tag {
-  position: fixed;
-  z-index: 2;
-  top: 16px;
-  left: 50%;
-  max-width: calc(100vw - 32px);
-  padding: 0;
-  transform: translateX(-50%);
-  color: rgb(238 242 247 / 90%);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1;
-  text-align: center;
-  text-shadow: 0 1px 4px rgb(0 0 0 / 72%);
-  white-space: nowrap;
-  pointer-events: none;
-}
-
 [hidden] {
   display: none !important;
 }
@@ -73,15 +55,16 @@ canvas {
 
 .panel {
   position: fixed;
-  top: 18px;
-  left: 18px;
-  width: min(320px, calc(100vw - 36px));
-  padding: 16px;
-  border: 1px solid rgb(226 239 255 / 18%);
+  top: 100px;
+  left: 50%;
+  width: min(400px, calc(100vw - 36px));
+  padding: 20px;
+  border: 1px solid rgb(226 239 255 / 26%);
   border-radius: 8px;
-  background: rgb(8 16 22 / 78%);
+  background: rgb(8 16 22 / 86%);
   box-shadow: 0 18px 42px rgb(0 0 0 / 24%);
   backdrop-filter: blur(14px);
+  transform: translateX(-50%);
 }
 
 #app[data-ui-panels="hidden"] .panel {
@@ -168,31 +151,37 @@ button:disabled:hover {
 
 label {
   display: grid;
-  grid-template-columns: 88px 1fr 42px;
+  grid-template-columns: 78px 1fr 56px;
   align-items: center;
-  gap: 10px;
-  min-height: 38px;
+  gap: 14px;
+  min-height: 50px;
   color: #dce6ef;
-  font-size: 13px;
+  font-size: 18px;
+  font-weight: 680;
 }
 
 output {
   color: #9fb0bf;
+  font-size: 18px;
+  font-weight: 680;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 input[type="range"] {
   width: 100%;
+  height: 28px;
   accent-color: #61d394;
 }
 
 .camera-panel {
   top: auto;
   bottom: 18px;
+  left: 18px;
   width: auto;
   max-height: calc(100vh - 36px);
   overflow: auto;
+  transform: none;
 }
 
 .camera-panel .panel-header {
@@ -211,16 +200,10 @@ input[type="range"] {
 }
 
 @media (max-width: 620px) {
-  .social-tag {
-    top: 76px;
-    font-size: 11px;
-  }
-
   .panel {
-    top: 12px;
-    left: 12px;
+    top: 56px;
     width: calc(100vw - 24px);
-    padding: 12px;
+    padding: 16px;
   }
 
   h2 {
@@ -228,13 +211,15 @@ input[type="range"] {
   }
 
   label {
-    grid-template-columns: 78px 1fr 38px;
-    gap: 8px;
+    grid-template-columns: 68px 1fr 48px;
+    gap: 10px;
+    font-size: 16px;
   }
 
   .camera-panel {
     top: auto;
     bottom: 12px;
+    left: 12px;
     width: auto;
     max-height: min(48vh, 380px);
   }
