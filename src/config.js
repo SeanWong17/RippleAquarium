@@ -32,7 +32,7 @@ export const fishConfig = {
 };
 
 export const coneConfig = {
-  count: 10,
+  count: 0,
   radius: 0.3,
   length: 0.8,
   renderScale: 1,
