@@ -14,6 +14,12 @@ export const fishConfig = {
   highlightedIndex: 0,
   bodyColor: new THREE.Color(0xf2f6ff),
   highlightedColor: new THREE.Color(0xf2f6ff),
+  appearanceVariants: [
+    new THREE.Color(0xf2f6ff), // 原始浅色
+    new THREE.Color(0xff8a2a), // 小丑鱼橙白条纹
+    new THREE.Color(0xf7efe2), // 锦鲤红白斑
+    new THREE.Color(0x8fa4ad), // 灰鱼背腹渐变
+  ],
   renderBoundsRadius: 18,
   swimFrequencyMin: 0.9,
   swimFrequencyMax: 2.1,

@@ -37,9 +37,10 @@ export function createFishMesh(count) {
   mesh.renderOrder = 2;
 
   for (let i = 0; i < count; i += 1) {
+    const variant = fishConfig.appearanceVariants[i % fishConfig.appearanceVariants.length];
     mesh.setColorAt(
       i,
-      i === fishConfig.highlightedIndex ? fishConfig.highlightedColor : fishConfig.bodyColor,
+      i === fishConfig.highlightedIndex ? fishConfig.highlightedColor : variant,
     );
   }
   if (mesh.instanceColor) {

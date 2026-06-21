@@ -71,6 +71,7 @@ export function cloneFishMaterial(material) {
     cloned.metalnessMap = null;
   }
   cloned.side = THREE.FrontSide;
+  enableFishAppearanceVariants(cloned);
   cloned.needsUpdate = true;
   return cloned;
 }
@@ -80,6 +81,80 @@ export function disposeFishMaterial(material) {
 
   material.gradientMap?.dispose();
   material.dispose();
+}
+
+function enableFishAppearanceVariants(material) {
+  const previousOnBeforeCompile = material.onBeforeCompile;
+
+  material.onBeforeCompile = (shader, renderer) => {
+    previousOnBeforeCompile?.(shader, renderer);
+    shader.vertexShader = shader.vertexShader.replace(
+      "#include <common>",
+      `#include <common>
+varying vec3 vFishLocalPosition;`,
+    ).replace(
+      "#include <uv_vertex>",
+      `#include <uv_vertex>
+vFishLocalPosition = position;`,
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <common>",
+      `#include <common>
+varying vec3 vFishLocalPosition;
+
+vec3 readFishAppearanceColor(vec3 baseColor, vec3 localPosition) {
+  float variant = 0.0;
+  if (baseColor.r > 0.9 && baseColor.g < 0.72) variant = 1.0;
+  else if (baseColor.r > 0.85 && baseColor.g > 0.78 && baseColor.b < 0.72) variant = 2.0;
+  else if (baseColor.r < 0.7 && baseColor.g < 0.78 && baseColor.b < 0.82) variant = 3.0;
+
+  if (variant < 0.5) {
+    float dorsal = smoothstep(-0.15, 0.35, localPosition.z);
+    return mix(baseColor * 0.78, baseColor, dorsal);
+  }
+
+  if (variant < 1.5) {
+    vec3 orange = vec3(1.0, 0.37, 0.08);
+    vec3 white = vec3(1.0, 0.96, 0.86);
+    vec3 black = vec3(0.025, 0.025, 0.025);
+    float stripeA = 1.0 - smoothstep(0.08, 0.16, abs(localPosition.y - 0.38));
+    float stripeB = 1.0 - smoothstep(0.08, 0.16, abs(localPosition.y + 0.10));
+    float stripeC = 1.0 - smoothstep(0.06, 0.14, abs(localPosition.y + 0.46));
+    float stripe = max(max(stripeA, stripeB), stripeC);
+    float edge = max(
+      1.0 - smoothstep(0.14, 0.19, abs(localPosition.y - 0.38)),
+      max(
+        1.0 - smoothstep(0.14, 0.19, abs(localPosition.y + 0.10)),
+        1.0 - smoothstep(0.12, 0.17, abs(localPosition.y + 0.46))
+      )
+    );
+    vec3 color = mix(orange, white, stripe);
+    return mix(color, black, clamp(edge - stripe, 0.0, 1.0));
+  }
+
+  if (variant < 2.5) {
+    vec3 white = vec3(1.0, 0.94, 0.82);
+    vec3 red = vec3(0.9, 0.13, 0.08);
+    float spotA = smoothstep(0.30, 0.0, length(localPosition.xy - vec2(0.05, 0.25)));
+    float spotB = smoothstep(0.28, 0.0, length(localPosition.xy - vec2(-0.08, -0.12)));
+    float spotC = smoothstep(0.22, 0.0, length(localPosition.xy - vec2(0.10, -0.42)));
+    return mix(white, red, clamp(max(max(spotA, spotB), spotC), 0.0, 1.0));
+  }
+
+  vec3 belly = vec3(0.74, 0.84, 0.87);
+  vec3 back = vec3(0.18, 0.28, 0.32);
+  float dorsal = smoothstep(-0.35, 0.42, localPosition.z);
+  float sideLine = 1.0 - smoothstep(0.025, 0.065, abs(localPosition.z + 0.02));
+  return mix(mix(belly, back, dorsal), vec3(0.9, 0.98, 1.0), sideLine * 0.28);
+}`,
+    ).replace(
+      "#include <color_fragment>",
+      `#include <color_fragment>
+#ifdef USE_INSTANCING_COLOR
+  diffuseColor.rgb = readFishAppearanceColor(diffuseColor.rgb, vFishLocalPosition);
+#endif`,
+    );
+  };
 }
 
 function createFishModelFromGltf(gltf) {
