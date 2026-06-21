@@ -262,6 +262,21 @@ export function createWaterSurface(renderer) {
     material.uniforms.uTime.value = time;
   }
 
+  function setSettings(settings) {
+    if (Number.isFinite(settings.force)) {
+      simulationMaterial.uniforms.uForce.value = settings.force;
+    }
+    if (Number.isFinite(settings.radius)) {
+      simulationMaterial.uniforms.uRadius.value = settings.radius;
+    }
+    if (Number.isFinite(settings.displacement)) {
+      material.uniforms.uDisplacement.value = settings.displacement;
+    }
+    if (Number.isFinite(settings.persistence)) {
+      simulationMaterial.uniforms.uDampLarge.value = settings.persistence;
+    }
+  }
+
   function dispose() {
     simulationGeometry.dispose();
     simulationMaterial.dispose();
@@ -275,6 +290,7 @@ export function createWaterSurface(renderer) {
     mesh,
     update,
     queueImpact,
+    setSettings,
     dispose,
   };
 }

@@ -1,9 +1,10 @@
-# Three.js Boids
+# Three.js 鱼群水波
 
 ![Three.js Boids demo](./demo.gif)
 
-## Water ripples
+## 水面波纹
 
-The aquarium surface uses a ping-pong height-field shader. Fish that skim the
-waterline and mouse/touch clicks on the surface inject ripples into the same
-simulation texture.
+鱼缸水面使用 ping-pong 高度场 shader。鱼靠近水线、鼠标点击或触摸点击水面时，
+都会向同一张模拟纹理注入波纹。
+
+右侧抽屉提供鱼群、水面和光照参数控制。右上角按钮可以隐藏或重新展开参数面板。

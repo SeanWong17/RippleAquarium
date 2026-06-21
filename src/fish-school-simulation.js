@@ -157,7 +157,7 @@ export class FishSchoolSimulation {
         }
       }
 
-      const boundary = this.aquariumBoundarySteer(fish.position, this.settings.boundaryMargin);
+      const boundary = this.aquariumBoundarySteer(fish.position);
       if (boundary.lengthSq() > 0) {
         boundaryAvoidanceActive = true;
         const boundaryForce = this.steerTowards(
@@ -250,7 +250,7 @@ export class FishSchoolSimulation {
       forward,
       this.settings.collisionAvoidDistance,
     );
-    return !this.isInsideAquarium(end, this.settings.boundsRadius);
+    return !this.isInsidePredictedAquarium(end, this.settings.boundsRadius);
   }
 
   obstacleRays(position, forward) {
@@ -267,7 +267,7 @@ export class FishSchoolSimulation {
       );
 
       if (!this.rayHitsObstacle(position, direction, this.settings.collisionAvoidDistance)) {
-        if (this.isInsideAquarium(end, this.settings.boundsRadius)) {
+        if (this.isInsidePredictedAquarium(end, this.settings.boundsRadius)) {
           return direction.clone();
         }
       }
@@ -340,17 +340,28 @@ export class FishSchoolSimulation {
     return vector;
   }
 
-  aquariumBoundarySteer(position, margin) {
+  aquariumBoundarySteer(position) {
     const steer = new THREE.Vector3();
+    const horizontalMargin = this.settings.horizontalBoundaryMargin ?? this.settings.boundaryMargin;
+    const topMargin = this.settings.topBoundaryMargin ?? this.settings.boundaryMargin;
+    const bottomMargin = this.settings.bottomBoundaryMargin ?? this.settings.boundaryMargin;
 
-    for (const axis of ["x", "y", "z"]) {
-      const innerLimit = this.aquariumHalfSize[axis] - margin;
+    for (const axis of ["x", "z"]) {
+      const innerLimit = this.aquariumHalfSize[axis] - horizontalMargin;
 
       if (position[axis] > innerLimit) {
-        steer[axis] -= (position[axis] - innerLimit) / margin;
+        steer[axis] -= (position[axis] - innerLimit) / horizontalMargin;
       } else if (position[axis] < -innerLimit) {
-        steer[axis] += (-innerLimit - position[axis]) / margin;
+        steer[axis] += (-innerLimit - position[axis]) / horizontalMargin;
       }
+    }
+
+    const topInnerLimit = this.aquariumHalfSize.y - topMargin;
+    const bottomInnerLimit = -this.aquariumHalfSize.y + bottomMargin;
+    if (position.y > topInnerLimit) {
+      steer.y -= (position.y - topInnerLimit) / topMargin;
+    } else if (position.y < bottomInnerLimit) {
+      steer.y += (bottomInnerLimit - position.y) / bottomMargin;
     }
 
     return steer;
@@ -360,6 +371,17 @@ export class FishSchoolSimulation {
     return (
       Math.abs(point.x) <= this.aquariumHalfSize.x - inset &&
       Math.abs(point.y) <= this.aquariumHalfSize.y - inset &&
+      Math.abs(point.z) <= this.aquariumHalfSize.z - inset
+    );
+  }
+
+  isInsidePredictedAquarium(point, inset = 0) {
+    const topInset = Math.min(inset, this.settings.topBoundaryMargin ?? inset);
+
+    return (
+      Math.abs(point.x) <= this.aquariumHalfSize.x - inset &&
+      point.y <= this.aquariumHalfSize.y - topInset &&
+      point.y >= -this.aquariumHalfSize.y + inset &&
       Math.abs(point.z) <= this.aquariumHalfSize.z - inset
     );
   }

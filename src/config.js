@@ -59,6 +59,9 @@ export const simulationSettings = {
   collisionAvoidDistance: 5,
   boundaryWeight: 9,
   boundaryMargin: 2,
+  topBoundaryMargin: 0.42,
+  bottomBoundaryMargin: 2,
+  horizontalBoundaryMargin: 2,
 };
 
 export const obstacles = [

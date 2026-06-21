@@ -52,6 +52,12 @@ const controls = {
   separation: createControl("#separation", "#separation-value"),
   avoidance: createControl("#avoidance", "#avoidance-value"),
   turnRate: createControl("#turn-rate", "#turn-rate-value"),
+  topMargin: createControl("#top-margin", "#top-margin-value"),
+  waterForce: createControl("#water-force", "#water-force-value"),
+  waterRadius: createControl("#water-radius", "#water-radius-value"),
+  waterHeight: createControl("#water-height", "#water-height-value"),
+  waterPersistence: createControl("#water-persistence", "#water-persistence-value"),
+  surfaceBand: createControl("#surface-band", "#surface-band-value"),
   light: createControl("#light", "#light-value"),
 };
 
@@ -60,6 +66,7 @@ const simulationControlSettings = {
   separation: "separateWeight",
   avoidance: "avoidCollisionWeight",
   turnRate: "maxTurnRate",
+  topMargin: "topBoundaryMargin",
 };
 
 let fishMesh = null;
@@ -72,6 +79,9 @@ const waterPointer = {
   pointer: new THREE.Vector2(),
   previousPoint: null,
 };
+const waterInteraction = {
+  surfaceBand: 0.72,
+};
 const fishSurfaceState = new WeakMap();
 
 const lighting = addLighting(scene);
@@ -79,10 +89,12 @@ lighting.setIntensity(readControlValue("light"));
 const aquariumEffects = addAquarium(scene, renderer);
 addObstacles(scene, obstacles);
 applySimulationSettingsFromControls();
+applyWaterSettingsFromControls();
 bindControls();
 bindPlaybackControls();
 bindCameraToggle(cameraRig);
 bindUiPanelShortcuts();
+bindControlsPanel();
 bindWaterPointer();
 const cameraPanel = bindCameraPanel(cameraRig);
 const modelLoading = bindModelLoading();
@@ -143,6 +155,18 @@ function bindUiPanelShortcuts() {
   });
 }
 
+function bindControlsPanel() {
+  const toggleButton = getRequiredElement("#controls-toggle");
+  let hidden = false;
+
+  toggleButton.addEventListener("click", () => {
+    hidden = !hidden;
+    app.dataset.controlsPanel = hidden ? "hidden" : "visible";
+    toggleButton.textContent = hidden ? "显示参数" : "隐藏参数";
+    toggleButton.setAttribute("aria-expanded", String(!hidden));
+  });
+}
+
 function bindWaterPointer() {
   canvas.addEventListener("pointerdown", (event) => {
     if (event.target !== canvas) return;
@@ -198,8 +222,8 @@ function getWaterIntersection(event) {
 }
 
 function queueFishSurfaceImpacts(fish) {
-  const surfaceBand = 0.34;
-  const cooldownSeconds = 0.18;
+  const surfaceBand = waterInteraction.surfaceBand;
+  const cooldownSeconds = 0.16;
 
   for (const item of fish) {
     const distanceToSurface = waterLevelY - item.position.y;
@@ -208,7 +232,7 @@ function queueFishSurfaceImpacts(fish) {
     if (
       distanceToSurface >= 0 &&
       distanceToSurface < surfaceBand &&
-      item.velocity.y > 0.18 &&
+      item.velocity.y > -0.08 &&
       (!previous || simulationTime - previous.time > cooldownSeconds)
     ) {
       const previousPoint = previous?.point ?? item.position;
@@ -232,7 +256,7 @@ function queueFishSurfaceImpacts(fish) {
 }
 
 function syncPlaybackControls(toggleButton, stepButton) {
-  toggleButton.textContent = simulationPaused ? "Resume" : "Pause";
+  toggleButton.textContent = simulationPaused ? "继续" : "暂停";
   toggleButton.setAttribute("aria-pressed", String(simulationPaused));
   stepButton.disabled = !simulationPaused;
 }
@@ -253,6 +277,11 @@ function applyControlChange(key) {
     return;
   }
 
+  if (key.startsWith("water") || key === "surfaceBand") {
+    applyWaterSettingsFromControls();
+    return;
+  }
+
   applySimulationSettingsFromControls();
 }
 
@@ -260,6 +289,16 @@ function applySimulationSettingsFromControls() {
   for (const [key, settingName] of Object.entries(simulationControlSettings)) {
     simulationSettings[settingName] = readControlValue(key);
   }
+}
+
+function applyWaterSettingsFromControls() {
+  waterInteraction.surfaceBand = readControlValue("surfaceBand");
+  aquariumEffects.waterSurface.setSettings({
+    force: readControlValue("waterForce"),
+    radius: readControlValue("waterRadius"),
+    displacement: readControlValue("waterHeight"),
+    persistence: readControlValue("waterPersistence"),
+  });
 }
 
 function setFishCount(count) {
@@ -391,7 +430,7 @@ function bindCameraPanel(rig) {
   copyButton.addEventListener("click", async () => {
     const json = JSON.stringify(readCameraTransformSnapshot(rig), null, 2);
     const copied = await copyText(json);
-    copyStatus.textContent = copied ? "Copied camera JSON" : "Copy failed";
+    copyStatus.textContent = copied ? "已复制相机参数" : "复制失败";
     window.clearTimeout(copyStatusTimeout);
     copyStatusTimeout = window.setTimeout(() => {
       copyStatus.textContent = "";
