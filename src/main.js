@@ -7,6 +7,7 @@ import {
   fishConfig,
   obstacles,
   simulationSettings,
+  waterLevelY,
 } from "./config.js";
 import {
   createConeSchoolMesh,
@@ -66,16 +67,23 @@ let coneSchoolMesh = null;
 let simulationPaused = false;
 let pendingSimulationSteps = 0;
 let simulationTime = 0;
+const waterPointer = {
+  raycaster: new THREE.Raycaster(),
+  pointer: new THREE.Vector2(),
+  previousPoint: null,
+};
+const fishSurfaceState = new WeakMap();
 
 const lighting = addLighting(scene);
 lighting.setIntensity(readControlValue("light"));
-const aquariumEffects = addAquarium(scene);
+const aquariumEffects = addAquarium(scene, renderer);
 addObstacles(scene, obstacles);
 applySimulationSettingsFromControls();
 bindControls();
 bindPlaybackControls();
 bindCameraToggle(cameraRig);
 bindUiPanelShortcuts();
+bindWaterPointer();
 const cameraPanel = bindCameraPanel(cameraRig);
 const modelLoading = bindModelLoading();
 try {
@@ -133,6 +141,94 @@ function bindUiPanelShortcuts() {
       app.dataset.uiPanels = "visible";
     }
   });
+}
+
+function bindWaterPointer() {
+  canvas.addEventListener("pointerdown", (event) => {
+    if (event.target !== canvas) return;
+
+    const point = getWaterIntersection(event);
+    if (!point) return;
+
+    aquariumEffects.waterSurface.queueImpact(point);
+    waterPointer.previousPoint = point.clone();
+  });
+
+  canvas.addEventListener("pointermove", (event) => {
+    if ((event.buttons & 1) === 0 || !waterPointer.previousPoint) return;
+
+    const point = getWaterIntersection(event);
+    if (!point) return;
+
+    aquariumEffects.waterSurface.queueImpact(waterPointer.previousPoint, point);
+    waterPointer.previousPoint.copy(point);
+  });
+
+  window.addEventListener("pointerup", () => {
+    waterPointer.previousPoint = null;
+  });
+  window.addEventListener("pointercancel", () => {
+    waterPointer.previousPoint = null;
+  });
+}
+
+function getWaterIntersection(event) {
+  const rect = canvas.getBoundingClientRect();
+  waterPointer.pointer.set(
+    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+    -((event.clientY - rect.top) / rect.height) * 2 + 1,
+  );
+  waterPointer.raycaster.setFromCamera(waterPointer.pointer, cameraRig.activeCamera);
+
+  const directionY = waterPointer.raycaster.ray.direction.y;
+  if (Math.abs(directionY) < 0.000001) return null;
+
+  const distance = (waterLevelY - waterPointer.raycaster.ray.origin.y) / directionY;
+  if (distance < 0) return null;
+
+  const point = waterPointer.raycaster.ray.at(distance, new THREE.Vector3());
+  if (
+    Math.abs(point.x) > aquariumHalfSize.x ||
+    Math.abs(point.z) > aquariumHalfSize.z
+  ) {
+    return null;
+  }
+
+  return point;
+}
+
+function queueFishSurfaceImpacts(fish) {
+  const surfaceBand = 0.34;
+  const cooldownSeconds = 0.18;
+
+  for (const item of fish) {
+    const distanceToSurface = waterLevelY - item.position.y;
+    const previous = fishSurfaceState.get(item);
+
+    if (
+      distanceToSurface >= 0 &&
+      distanceToSurface < surfaceBand &&
+      item.velocity.y > 0.18 &&
+      (!previous || simulationTime - previous.time > cooldownSeconds)
+    ) {
+      const previousPoint = previous?.point ?? item.position;
+      aquariumEffects.waterSurface.queueImpact(previousPoint, item.position);
+      fishSurfaceState.set(item, {
+        time: simulationTime,
+        point: item.position.clone(),
+      });
+      continue;
+    }
+
+    if (!previous) {
+      fishSurfaceState.set(item, {
+        time: -Infinity,
+        point: item.position.clone(),
+      });
+    } else {
+      previous.point.copy(item.position);
+    }
+  }
 }
 
 function syncPlaybackControls(toggleButton, stepButton) {
@@ -213,7 +309,7 @@ function animate() {
     const schools = splitRenderableSchools(simulation.fish);
     updateFishInstances(fishMesh, schools.fish);
     updateConeSchoolInstances(coneSchoolMesh, schools.cones);
-    aquariumEffects.update(simulationTime);
+    queueFishSurfaceImpacts(simulation.fish);
     headingDebugger?.sample({
       dt: simulationDt,
       fish: simulation.fish[fishConfig.highlightedIndex],
@@ -225,6 +321,7 @@ function animate() {
     );
   }
 
+  aquariumEffects.update(simulationTime);
   cameraRig.update();
   cameraPanel.update();
   renderer.render(scene, cameraRig.activeCamera);

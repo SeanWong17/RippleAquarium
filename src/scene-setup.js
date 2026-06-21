@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { aquariumFloorY, aquariumSize, waterLevelY } from "./config.js";
+import { createWaterSurface } from "./water-surface.js";
 
 export function createRenderer(canvas) {
   if (!canvas) {
@@ -53,7 +54,7 @@ export function addLighting(scene) {
   };
 }
 
-export function addAquarium(scene) {
+export function addAquarium(scene, renderer) {
   const effects = [];
 
   const glassMaterial = new THREE.MeshPhysicalMaterial({
@@ -110,9 +111,13 @@ export function addAquarium(scene) {
   floorEdges.position.copy(floor.position);
   scene.add(floorEdges);
 
+  const waterSurface = createWaterSurface(renderer);
+  scene.add(waterSurface.mesh);
+  effects.push(waterSurface);
   effects.push(addBubbleColumns(scene));
 
   return {
+    waterSurface,
     update(time) {
       for (const effect of effects) {
         effect.update?.(time);
