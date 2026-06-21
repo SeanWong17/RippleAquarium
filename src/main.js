@@ -26,6 +26,8 @@ import {
 } from "./scene-setup.js";
 
 const STEP_FRAME_SECONDS = 1 / 60;
+const baseMinSpeed = simulationSettings.minSpeed;
+const baseMaxSpeed = simulationSettings.maxSpeed;
 const app = getRequiredElement("#app");
 const canvas = getRequiredElement("#scene");
 const renderer = createRenderer(canvas);
@@ -53,6 +55,7 @@ const controls = {
   count: createControl("#count", "#count-value"),
   koiCount: createControl("#koi-count", "#koi-count-value"),
   perception: createControl("#perception", "#perception-value"),
+  speedScale: createControl("#speed-scale", "#speed-scale-value"),
   separation: createControl("#separation", "#separation-value"),
   avoidance: createControl("#avoidance", "#avoidance-value"),
   turnRate: createControl("#turn-rate", "#turn-rate-value"),
@@ -62,6 +65,7 @@ const controls = {
   koiAvoidance: createControl("#koi-avoidance", "#koi-avoidance-value"),
   koiTurnRate: createControl("#koi-turn-rate", "#koi-turn-rate-value"),
   koiTopMargin: createControl("#koi-top-margin", "#koi-top-margin-value"),
+  koiSpeedScale: createControl("#koi-speed-scale", "#koi-speed-scale-value"),
   waterForce: createControl("#water-force", "#water-force-value"),
   waterRadius: createControl("#water-radius", "#water-radius-value"),
   waterHeight: createControl("#water-height", "#water-height-value"),
@@ -343,12 +347,20 @@ function applySimulationSettingsFromControls() {
   for (const [key, settingName] of Object.entries(simulationControlSettings)) {
     simulationSettings[settingName] = readControlValue(key);
   }
+  applySpeedScale(simulationSettings, readControlValue("speedScale"));
 }
 
 function applyKoiSettingsFromControls() {
   for (const [key, settingName] of Object.entries(koiControlSettings)) {
     koiSettings[settingName] = readControlValue(key);
   }
+  applySpeedScale(koiSettings, readControlValue("koiSpeedScale"));
+}
+
+function applySpeedScale(settings, scale) {
+  const normalizedScale = Number.isFinite(scale) ? scale : 1;
+  settings.minSpeed = baseMinSpeed * normalizedScale;
+  settings.maxSpeed = baseMaxSpeed * normalizedScale;
 }
 
 function applyWaterSettingsFromControls() {

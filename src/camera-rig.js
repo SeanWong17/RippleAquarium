@@ -15,15 +15,15 @@ const fallbackUp = new THREE.Vector3(1, 0, 0);
 
 export function createCameraRig(renderer) {
   const orbitCamera = new THREE.PerspectiveCamera(55, 1, 0.1, 120);
-  orbitCamera.position.set(0, 10, 35);
+  orbitCamera.position.set(0, 8.4, 27);
 
   const fishCamera = new THREE.PerspectiveCamera(74, 1, 0.03, 90);
 
   const controls = new OrbitControls(orbitCamera, renderer.domElement);
   controls.enableDamping = true;
-  controls.target.set(0, 0.8, 0);
+  controls.target.set(0, 0.4, 0);
   controls.maxDistance = 38;
-  controls.minDistance = 8;
+  controls.minDistance = 6;
 
   const pose = {
     position: new THREE.Vector3(),
