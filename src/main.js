@@ -11,7 +11,7 @@ import {
   waterLevelY,
 } from "./config.js";
 import {
-  createFishMesh,
+  createFishMeshByKey,
   disposeFishMesh,
   loadFishModel,
   updateFishInstances,
@@ -42,14 +42,26 @@ const simulation = new FishSchoolSimulation({
   obstacles,
   settings: simulationSettings,
 });
+const koiSettings = { ...simulationSettings };
+const koiSimulation = new FishSchoolSimulation({
+  aquariumHalfSize,
+  obstacles,
+  settings: koiSettings,
+});
 
 const controls = {
   count: createControl("#count", "#count-value"),
+  koiCount: createControl("#koi-count", "#koi-count-value"),
   perception: createControl("#perception", "#perception-value"),
   separation: createControl("#separation", "#separation-value"),
   avoidance: createControl("#avoidance", "#avoidance-value"),
   turnRate: createControl("#turn-rate", "#turn-rate-value"),
   topMargin: createControl("#top-margin", "#top-margin-value"),
+  koiPerception: createControl("#koi-perception", "#koi-perception-value"),
+  koiSeparation: createControl("#koi-separation", "#koi-separation-value"),
+  koiAvoidance: createControl("#koi-avoidance", "#koi-avoidance-value"),
+  koiTurnRate: createControl("#koi-turn-rate", "#koi-turn-rate-value"),
+  koiTopMargin: createControl("#koi-top-margin", "#koi-top-margin-value"),
   waterForce: createControl("#water-force", "#water-force-value"),
   waterRadius: createControl("#water-radius", "#water-radius-value"),
   waterHeight: createControl("#water-height", "#water-height-value"),
@@ -68,8 +80,16 @@ const simulationControlSettings = {
   turnRate: "maxTurnRate",
   topMargin: "topBoundaryMargin",
 };
+const koiControlSettings = {
+  koiPerception: "perceptionRadius",
+  koiSeparation: "separateWeight",
+  koiAvoidance: "avoidCollisionWeight",
+  koiTurnRate: "maxTurnRate",
+  koiTopMargin: "topBoundaryMargin",
+};
 
 let fishMesh = null;
+let koiMesh = null;
 let clownfishSchool = null;
 let coralReef = null;
 let coralIntro = null;
@@ -91,6 +111,7 @@ lighting.setIntensity(readControlValue("light"));
 const aquariumEffects = addAquarium(scene, renderer);
 addObstacles(scene, obstacles);
 applySimulationSettingsFromControls();
+applyKoiSettingsFromControls();
 applyWaterSettingsFromControls();
 bindControls();
 bindPlaybackControls();
@@ -120,7 +141,9 @@ try {
   modelLoading.finish();
 }
 simulation.reset(readControlValue("count"));
+koiSimulation.reset(readControlValue("koiCount"), 142);
 rebuildFishMesh();
+rebuildKoiMesh();
 resize();
 window.addEventListener("resize", resize);
 renderer.setAnimationLoop(animate);
@@ -282,6 +305,11 @@ function applyControlChange(key) {
     return;
   }
 
+  if (key === "koiCount") {
+    setKoiCount(readControlValue(key));
+    return;
+  }
+
   if (key === "light") {
     lighting.setIntensity(readControlValue(key));
     return;
@@ -303,12 +331,23 @@ function applyControlChange(key) {
     return;
   }
 
+  if (key.startsWith("koi")) {
+    applyKoiSettingsFromControls();
+    return;
+  }
+
   applySimulationSettingsFromControls();
 }
 
 function applySimulationSettingsFromControls() {
   for (const [key, settingName] of Object.entries(simulationControlSettings)) {
     simulationSettings[settingName] = readControlValue(key);
+  }
+}
+
+function applyKoiSettingsFromControls() {
+  for (const [key, settingName] of Object.entries(koiControlSettings)) {
+    koiSettings[settingName] = readControlValue(key);
   }
 }
 
@@ -344,6 +383,11 @@ function setFishCount(count) {
   rebuildFishMesh();
 }
 
+function setKoiCount(count) {
+  koiSimulation.setCount(count);
+  rebuildKoiMesh();
+}
+
 function rebuildFishMesh() {
   if (fishMesh) {
     scene.remove(fishMesh);
@@ -352,10 +396,26 @@ function rebuildFishMesh() {
 
   const schools = splitRenderableSchools(simulation.fish);
 
-  fishMesh = createFishMesh(schools.fish.length);
+  fishMesh = createFishMeshByKey(schools.fish.length, "cartoon");
   scene.add(fishMesh);
   updateFishInstances(fishMesh, schools.fish);
   cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex]);
+}
+
+function rebuildKoiMesh() {
+  if (koiMesh) {
+    scene.remove(koiMesh);
+    disposeFishMesh(koiMesh);
+    koiMesh = null;
+  }
+
+  if (koiSimulation.fish.length <= 0) {
+    return;
+  }
+
+  koiMesh = createFishMeshByKey(koiSimulation.fish.length, "koi");
+  scene.add(koiMesh);
+  updateFishInstances(koiMesh, koiSimulation.fish);
 }
 
 function animate() {
@@ -368,10 +428,15 @@ function animate() {
     trace = simulation.update(simulationDt, {
       traceIndex: headingDebugger?.traceIndex,
     });
+    koiSimulation.update(simulationDt);
     const schools = splitRenderableSchools(simulation.fish);
     updateFishInstances(fishMesh, schools.fish);
+    if (koiMesh) {
+      updateFishInstances(koiMesh, koiSimulation.fish);
+    }
     clownfishSchool?.update(simulationTime, simulationDt);
     queueFishSurfaceImpacts(simulation.fish);
+    queueFishSurfaceImpacts(koiSimulation.fish);
     headingDebugger?.sample({
       dt: simulationDt,
       fish: simulation.fish[fishConfig.highlightedIndex],

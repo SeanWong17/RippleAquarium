@@ -78,7 +78,11 @@ export async function loadFishModel() {
           console.warn(`Failed to load ${source.key} fish model.`, result.reason);
         }
       }
+      const cartoonModel = loaded.find((model) => model.key === "cartoon") ?? loaded[0] ?? fishModels[0];
       fishModels = loaded.length ? loaded : fishModels;
+      if (!fishModels.some((model) => model.key === "koi")) {
+        fishModels.push(createKoiModelFromBase(cartoonModel));
+      }
       return fishModels;
     });
 
@@ -100,7 +104,9 @@ function createFishModelInstanceFromModel(fishModel) {
     geometry: fishModel.geometry.clone(),
     material: cloneFishMaterial(fishModel.material, {
       appearanceVariants: fishModel.useAppearanceVariants,
+      appearanceMode: fishModel.appearanceMode,
     }),
+    renderScale: fishModel.renderScale ?? 1,
     useAppearanceVariants: fishModel.useAppearanceVariants,
   };
 }
@@ -122,7 +128,7 @@ export function cloneFishMaterial(material, options = {}) {
   }
   cloned.side = THREE.FrontSide;
   if (options.appearanceVariants) {
-    enableFishAppearanceVariants(cloned);
+    enableFishAppearanceVariants(cloned, options.appearanceMode);
   }
   cloned.needsUpdate = true;
   return cloned;
@@ -135,11 +141,13 @@ export function disposeFishMaterial(material) {
   material.dispose();
 }
 
-function enableFishAppearanceVariants(material) {
+function enableFishAppearanceVariants(material, appearanceMode = "mixed") {
   const previousOnBeforeCompile = material.onBeforeCompile;
 
+  material.customProgramCacheKey = () => `fish-appearance-${appearanceMode}`;
   material.onBeforeCompile = (shader, renderer) => {
     previousOnBeforeCompile?.(shader, renderer);
+    shader.uniforms.fishAppearanceMode = { value: appearanceMode === "koi" ? 1 : 0 };
     shader.vertexShader = shader.vertexShader.replace(
       "#include <common>",
       `#include <common>
@@ -152,9 +160,22 @@ vFishLocalPosition = position;`,
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <common>",
       `#include <common>
+uniform int fishAppearanceMode;
 varying vec3 vFishLocalPosition;
 
 vec3 readFishAppearanceColor(vec3 baseColor, vec3 localPosition) {
+  if (fishAppearanceMode == 1) {
+    vec3 white = vec3(1.0, 0.94, 0.82);
+    vec3 red = vec3(0.88, 0.08, 0.035);
+    vec3 warmShadow = vec3(0.96, 0.82, 0.62);
+    float dorsal = smoothstep(-0.28, 0.46, localPosition.z);
+    float patchA = smoothstep(0.34, 0.0, length(localPosition.xy - vec2(0.02, 0.36)));
+    float patchB = smoothstep(0.30, 0.0, length(localPosition.xy - vec2(-0.10, -0.02)));
+    float patchC = smoothstep(0.25, 0.0, length(localPosition.xy - vec2(0.08, -0.36)));
+    float patch = clamp(max(max(patchA, patchB), patchC), 0.0, 1.0);
+    return mix(mix(white, warmShadow, dorsal * 0.26), red, patch);
+  }
+
   float variant = 0.0;
   if (baseColor.r > 0.9 && baseColor.g < 0.72) variant = 1.0;
   else if (baseColor.r > 0.85 && baseColor.g > 0.78 && baseColor.b < 0.72) variant = 2.0;
@@ -222,6 +243,84 @@ function createFishModelFromGltf(gltf, source) {
     material: cloneFishMaterial(sourceMesh.material),
     useAppearanceVariants: source.useAppearanceVariants,
   };
+}
+
+function createKoiModelFromBase(baseModel) {
+  const geometry = createKoiGeometry(baseModel.geometry);
+  return {
+    key: "koi",
+    geometry,
+    material: createKoiMaterial(baseModel.material),
+    useAppearanceVariants: false,
+    renderScale: 0.98,
+  };
+}
+
+function createKoiGeometry(sourceGeometry) {
+  const geometry = sourceGeometry.clone();
+  const position = geometry.getAttribute("position");
+  const colors = new Float32Array(position.count * 3);
+  const tmpVertex = new THREE.Vector3();
+  const white = new THREE.Color(0xfff0dc);
+  const red = new THREE.Color(0xd61f16);
+  const gold = new THREE.Color(0xf4b24a);
+  const tmpColor = new THREE.Color();
+
+  for (let i = 0; i < position.count; i += 1) {
+    tmpVertex.fromBufferAttribute(position, i);
+    const headKeep = THREE.MathUtils.smoothstep(
+      tmpVertex.y,
+      fishConfig.length * 0.2,
+      fishConfig.length * 0.42,
+    );
+    const bodyProgress = THREE.MathUtils.clamp(
+      1 - Math.abs(tmpVertex.y) / (fishConfig.length * 0.5),
+      0,
+      1,
+    );
+    const belly = 1.12 + bodyProgress * 0.46;
+    const height = 1.04 + bodyProgress * 0.26;
+    const length = 0.9;
+
+    const bodyBlend = 1 - headKeep;
+    position.setXYZ(
+      i,
+      THREE.MathUtils.lerp(tmpVertex.x, tmpVertex.x * belly, bodyBlend),
+      THREE.MathUtils.lerp(tmpVertex.y, tmpVertex.y * length, bodyBlend),
+      THREE.MathUtils.lerp(tmpVertex.z, tmpVertex.z * height, bodyBlend),
+    );
+
+    const patchA = smoothPatch(tmpVertex.x, tmpVertex.y, 0.02, 0.36, 0.34);
+    const patchB = smoothPatch(tmpVertex.x, tmpVertex.y, -0.1, -0.02, 0.3);
+    const patchC = smoothPatch(tmpVertex.x, tmpVertex.y, 0.08, -0.36, 0.25);
+    const patch = Math.max(patchA, patchB, patchC);
+    const dorsal = THREE.MathUtils.clamp((tmpVertex.z + 0.28) / 0.74, 0, 1);
+
+    tmpColor.copy(white).lerp(gold, dorsal * 0.22).lerp(red, patch);
+    tmpColor.lerp(white, headKeep);
+    colors[i * 3] = tmpColor.r;
+    colors[i * 3 + 1] = tmpColor.g;
+    colors[i * 3 + 2] = tmpColor.b;
+  }
+
+  position.needsUpdate = true;
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function createKoiMaterial(baseMaterial) {
+  const material = cloneFishMaterial(baseMaterial);
+  material.vertexColors = true;
+  material.needsUpdate = true;
+  return material;
+}
+
+function smoothPatch(x, y, centerX, centerY, radius) {
+  const distance = Math.hypot(x - centerX, y - centerY);
+  return 1 - THREE.MathUtils.smoothstep(distance, radius * 0.58, radius);
 }
 
 function findPrimaryMesh(root) {

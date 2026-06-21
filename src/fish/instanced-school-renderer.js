@@ -9,6 +9,7 @@ import {
 } from "./curve-deformation.js";
 import {
   createFishModelInstance,
+  createFishModelInstanceByKey,
   disposeFishMaterial,
 } from "./model-loader.js";
 import {
@@ -23,7 +24,16 @@ const tmpMatrix = new THREE.Matrix4();
 const tmpScale = new THREE.Vector3();
 
 export function createFishMesh(count, variantIndex = 0) {
-  const { geometry, material, useAppearanceVariants } = createFishModelInstance(variantIndex);
+  const { geometry, material, useAppearanceVariants, renderScale } = createFishModelInstance(variantIndex);
+  return createFishMeshFromModel(count, geometry, material, useAppearanceVariants, renderScale);
+}
+
+export function createFishMeshByKey(count, modelKey) {
+  const { geometry, material, useAppearanceVariants, renderScale } = createFishModelInstanceByKey(modelKey);
+  return createFishMeshFromModel(count, geometry, material, useAppearanceVariants, renderScale);
+}
+
+function createFishMeshFromModel(count, geometry, material, useAppearanceVariants, renderScale = 1) {
   addFishCurveAttributes(geometry, count);
   enableFishCurveDeformation(material);
 
@@ -35,6 +45,7 @@ export function createFishMesh(count, variantIndex = 0) {
   );
   mesh.castShadow = true;
   mesh.renderOrder = 2;
+  mesh.userData.renderScale = renderScale;
 
   for (let i = 0; i < count; i += 1) {
     const variant = useAppearanceVariants
@@ -64,7 +75,7 @@ export function updateFishInstances(mesh, fish) {
 
   for (let i = 0; i < fish.length; i += 1) {
     const currentFish = fish[i];
-    const fishScale = fishConfig.renderScale;
+    const fishScale = fishConfig.renderScale * (mesh.userData.renderScale ?? 1);
     const direction = readFishDirection(currentFish, tmpDirection);
     writeFishOrientationQuaternion(currentFish, direction, tmpQuaternion);
     updateFishCurveAttributes(

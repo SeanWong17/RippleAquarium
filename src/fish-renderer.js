@@ -1,4 +1,5 @@
 export {
+  createFishMeshByKey,
   createFishMesh,
   disposeFishMesh,
   updateFishInstances,

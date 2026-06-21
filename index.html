@@ -40,9 +40,15 @@
         </div>
 
         <label>
-          鱼群数量
+          沙丁鱼数量
           <input id="count" type="range" min="1" max="260" step="1" value="60" />
           <output id="count-value">60</output>
+        </label>
+
+        <label>
+          锦鲤数量
+          <input id="koi-count" type="range" min="0" max="120" step="1" value="24" />
+          <output id="koi-count-value">24</output>
         </label>
 
         <label>
@@ -79,6 +85,37 @@
           顶部回避
           <input id="top-margin" type="range" min="0.2" max="2" step="0.05" value="0.42" />
           <output id="top-margin-value">0.42</output>
+        </label>
+
+        <h3>锦鲤</h3>
+        <label>
+          锦鲤感知范围
+          <input id="koi-perception" type="range" min="1.2" max="5.2" step="0.1" value="2.7" />
+          <output id="koi-perception-value">2.7</output>
+        </label>
+
+        <label>
+          锦鲤分离强度
+          <input id="koi-separation" type="range" min="0.4" max="3" step="0.1" value="1.35" />
+          <output id="koi-separation-value">1.35</output>
+        </label>
+
+        <label>
+          锦鲤避障强度
+          <input id="koi-avoidance" type="range" min="2" max="18" step="0.5" value="10" />
+          <output id="koi-avoidance-value">10</output>
+        </label>
+
+        <label>
+          锦鲤转向速度
+          <input id="koi-turn-rate" type="range" min="0.2" max="20" step="0.1" value="4" />
+          <output id="koi-turn-rate-value">4</output>
+        </label>
+
+        <label>
+          锦鲤顶部回避
+          <input id="koi-top-margin" type="range" min="0.2" max="2" step="0.05" value="0.42" />
+          <output id="koi-top-margin-value">0.42</output>
         </label>
 
         <h3>水面</h3>
