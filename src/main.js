@@ -1,22 +1,19 @@
 import * as THREE from "three";
 import { FishSchoolSimulation } from "./fish-school-simulation.js";
 import { bindCameraToggle, createCameraRig } from "./camera-rig.js";
+import { createClownfishSchool } from "./clownfish-school.js";
 import { createCoralReef } from "./coral-reef.js";
 import {
   aquariumHalfSize,
-  coneConfig,
   fishConfig,
   obstacles,
   simulationSettings,
   waterLevelY,
 } from "./config.js";
 import {
-  createConeSchoolMesh,
   createFishMesh,
-  disposeConeSchoolMesh,
   disposeFishMesh,
   loadFishModel,
-  updateConeSchoolInstances,
   updateFishInstances,
 } from "./fish-renderer.js";
 import { createHeadingDebugger } from "./heading-debugger.js";
@@ -48,7 +45,6 @@ const simulation = new FishSchoolSimulation({
 
 const controls = {
   count: createControl("#count", "#count-value"),
-  cones: createControl("#cones", "#cones-value"),
   perception: createControl("#perception", "#perception-value"),
   separation: createControl("#separation", "#separation-value"),
   avoidance: createControl("#avoidance", "#avoidance-value"),
@@ -61,6 +57,7 @@ const controls = {
   surfaceBand: createControl("#surface-band", "#surface-band-value"),
   coralCount: createControl("#coral-count", "#coral-count-value"),
   coralScale: createControl("#coral-scale", "#coral-scale-value"),
+  clownfishCount: createControl("#clownfish-count", "#clownfish-count-value"),
   light: createControl("#light", "#light-value"),
 };
 
@@ -73,7 +70,7 @@ const simulationControlSettings = {
 };
 
 let fishMesh = null;
-let coneSchoolMesh = null;
+let clownfishSchool = null;
 let coralReef = null;
 let coralIntro = null;
 let simulationPaused = false;
@@ -114,12 +111,15 @@ try {
   ]);
   coralReef = loadedCoralReef;
   scene.add(coralReef.group);
+  clownfishSchool = createClownfishSchool(coralReef, {
+    count: readControlValue("clownfishCount"),
+  });
+  scene.add(clownfishSchool.mesh);
   startCoralIntro();
 } finally {
   modelLoading.finish();
 }
 simulation.reset(readControlValue("count"));
-syncConeControlLimit();
 rebuildFishMesh();
 resize();
 window.addEventListener("resize", resize);
@@ -282,13 +282,13 @@ function applyControlChange(key) {
     return;
   }
 
-  if (key === "cones") {
-    setConeCount(readControlValue(key));
+  if (key === "light") {
+    lighting.setIntensity(readControlValue(key));
     return;
   }
 
-  if (key === "light") {
-    lighting.setIntensity(readControlValue(key));
+  if (key === "clownfishCount") {
+    clownfishSchool?.setCount(readControlValue(key));
     return;
   }
 
@@ -341,13 +341,6 @@ function startCoralIntro() {
 
 function setFishCount(count) {
   simulation.setCount(count);
-  syncConeControlLimit();
-  rebuildFishMesh();
-}
-
-function setConeCount(count) {
-  coneConfig.count = normalizeConeCount(count);
-  syncConeControlLimit();
   rebuildFishMesh();
 }
 
@@ -356,20 +349,12 @@ function rebuildFishMesh() {
     scene.remove(fishMesh);
     disposeFishMesh(fishMesh);
   }
-  if (coneSchoolMesh) {
-    scene.remove(coneSchoolMesh);
-    disposeConeSchoolMesh(coneSchoolMesh);
-  }
 
   const schools = splitRenderableSchools(simulation.fish);
 
   fishMesh = createFishMesh(schools.fish.length);
   scene.add(fishMesh);
   updateFishInstances(fishMesh, schools.fish);
-
-  coneSchoolMesh = createConeSchoolMesh(schools.cones.length);
-  scene.add(coneSchoolMesh);
-  updateConeSchoolInstances(coneSchoolMesh, schools.cones);
   cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex]);
 }
 
@@ -385,7 +370,7 @@ function animate() {
     });
     const schools = splitRenderableSchools(simulation.fish);
     updateFishInstances(fishMesh, schools.fish);
-    updateConeSchoolInstances(coneSchoolMesh, schools.cones);
+    clownfishSchool?.update(simulationTime, simulationDt);
     queueFishSurfaceImpacts(simulation.fish);
     headingDebugger?.sample({
       dt: simulationDt,
@@ -413,6 +398,8 @@ function updateCoralIntro() {
     (performance.now() - coralIntro.startedAt) / coralIntro.duration,
   );
   const growth = Array.from({ length: coralReef.maxCount }, (_, index) => {
+    if (index >= coralIntro.targetCount) return 0;
+
     const orderProgress = index / Math.max(1, coralIntro.targetCount - 1);
     const local = THREE.MathUtils.clamp((progress - orderProgress * 0.58) / 0.42, 0, 1);
     return local * local * (3 - 2 * local);
@@ -435,38 +422,9 @@ function updateCoralIntro() {
 }
 
 function splitRenderableSchools(fish) {
-  const coneCount = Math.min(
-    coneConfig.count,
-    Math.max(0, fish.length - 1),
-  );
-  const fishCount = fish.length - coneCount;
-
   return {
-    fish: fish.slice(0, fishCount),
-    cones: fish.slice(fishCount),
+    fish,
   };
-}
-
-function syncConeControlLimit() {
-  const control = controls.cones;
-  const maxConeCount = Math.max(0, simulation.fish.length - 1);
-  const coneCount = Math.min(
-    normalizeConeCount(readInputNumber(control.input)),
-    maxConeCount,
-  );
-
-  control.input.max = String(maxConeCount);
-  control.input.value = String(coneCount);
-  coneConfig.count = coneCount;
-  syncControlOutput(control);
-}
-
-function normalizeConeCount(count) {
-  if (!Number.isFinite(count)) {
-    return coneConfig.count;
-  }
-
-  return Math.max(0, Math.floor(count));
 }
 
 function getSimulationDelta(frameDt) {

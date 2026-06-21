@@ -2,31 +2,60 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { fishConfig } from "./config.js";
 
-const fishModelUrl = new URL("./cartoon.glb", import.meta.url);
+const fishModelSources = [
+  {
+    key: "cartoon",
+    url: new URL("./cartoon.glb", import.meta.url),
+    useAppearanceVariants: false,
+    axes: new THREE.Matrix4().set(
+      0,
+      -1,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      1,
+    ),
+  },
+  {
+    key: "clown",
+    url: new URL("./models/clownFish.glb", import.meta.url),
+    useAppearanceVariants: false,
+    bakeWorldMatrix: true,
+    axes: new THREE.Matrix4().set(
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+    ),
+  },
+];
 const tmpBox = new THREE.Box3();
 const tmpCenter = new THREE.Vector3();
 const tmpSize = new THREE.Vector3();
 
-const rawModelToFishAxes = new THREE.Matrix4().set(
-  0,
-  -1,
-  0,
-  0,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  1,
-);
-
-let fishModel = createFallbackFishModel();
+let fishModels = [createFallbackFishModel()];
 let fishModelLoadPromise = null;
 
 export async function loadFishModel() {
@@ -34,28 +63,49 @@ export async function loadFishModel() {
     return fishModelLoadPromise;
   }
 
-  fishModelLoadPromise = new GLTFLoader()
-    .loadAsync(fishModelUrl.href)
-    .then((gltf) => {
-      fishModel = createFishModelFromGltf(gltf);
-      return fishModel;
-    })
-    .catch((error) => {
-      console.warn("Failed to load fish model; using fallback fish geometry.", error);
-      return fishModel;
+  const loader = new GLTFLoader();
+  fishModelLoadPromise = Promise.allSettled(
+    fishModelSources.map((source) => loader.loadAsync(source.url.href)),
+  )
+    .then((results) => {
+      const loaded = [];
+      for (let i = 0; i < results.length; i += 1) {
+        const source = fishModelSources[i];
+        const result = results[i];
+        if (result.status === "fulfilled") {
+          loaded.push(createFishModelFromGltf(result.value, source));
+        } else {
+          console.warn(`Failed to load ${source.key} fish model.`, result.reason);
+        }
+      }
+      fishModels = loaded.length ? loaded : fishModels;
+      return fishModels;
     });
 
   return fishModelLoadPromise;
 }
 
-export function createFishModelInstance() {
+export function createFishModelInstance(variantIndex = 0) {
+  const fishModel = fishModels[variantIndex % fishModels.length] ?? fishModels[0];
+  return createFishModelInstanceFromModel(fishModel);
+}
+
+export function createFishModelInstanceByKey(key) {
+  const fishModel = fishModels.find((model) => model.key === key) ?? fishModels[0];
+  return createFishModelInstanceFromModel(fishModel);
+}
+
+function createFishModelInstanceFromModel(fishModel) {
   return {
     geometry: fishModel.geometry.clone(),
-    material: cloneFishMaterial(fishModel.material),
+    material: cloneFishMaterial(fishModel.material, {
+      appearanceVariants: fishModel.useAppearanceVariants,
+    }),
+    useAppearanceVariants: fishModel.useAppearanceVariants,
   };
 }
 
-export function cloneFishMaterial(material) {
+export function cloneFishMaterial(material, options = {}) {
   const source = Array.isArray(material) ? material[0] : material;
   const cloned = source?.clone?.() ?? createFallbackFishMaterial();
   if ("roughness" in cloned) {
@@ -71,7 +121,9 @@ export function cloneFishMaterial(material) {
     cloned.metalnessMap = null;
   }
   cloned.side = THREE.FrontSide;
-  enableFishAppearanceVariants(cloned);
+  if (options.appearanceVariants) {
+    enableFishAppearanceVariants(cloned);
+  }
   cloned.needsUpdate = true;
   return cloned;
 }
@@ -157,15 +209,18 @@ vec3 readFishAppearanceColor(vec3 baseColor, vec3 localPosition) {
   };
 }
 
-function createFishModelFromGltf(gltf) {
+function createFishModelFromGltf(gltf, source) {
+  gltf.scene.updateWorldMatrix(true, true);
   const sourceMesh = findPrimaryMesh(gltf.scene);
   if (!sourceMesh) {
     throw new Error("Fish model does not contain a mesh.");
   }
 
   return {
-    geometry: createFishGeometry(sourceMesh.geometry),
+    key: source.key,
+    geometry: createFishGeometry(sourceMesh, source),
     material: cloneFishMaterial(sourceMesh.material),
+    useAppearanceVariants: source.useAppearanceVariants,
   };
 }
 
@@ -189,11 +244,15 @@ function findPrimaryMesh(root) {
   return result;
 }
 
-function createFishGeometry(sourceGeometry) {
-  const geometry = sourceGeometry.clone();
+function createFishGeometry(sourceMesh, source) {
+  const geometry = sourceMesh.geometry.clone();
 
-  // Blender-exported fish meshes are long on raw X, head toward -X, belly toward +Z.
-  geometry.applyMatrix4(rawModelToFishAxes);
+  if (source.bakeWorldMatrix) {
+    sourceMesh.updateWorldMatrix(true, false);
+    geometry.applyMatrix4(sourceMesh.matrixWorld);
+  }
+
+  geometry.applyMatrix4(source.axes);
   geometry.computeBoundingBox();
   tmpBox.copy(geometry.boundingBox);
   tmpBox.getCenter(tmpCenter);

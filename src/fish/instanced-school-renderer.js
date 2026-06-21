@@ -22,8 +22,8 @@ const tmpQuaternion = new THREE.Quaternion();
 const tmpMatrix = new THREE.Matrix4();
 const tmpScale = new THREE.Vector3();
 
-export function createFishMesh(count) {
-  const { geometry, material } = createFishModelInstance();
+export function createFishMesh(count, variantIndex = 0) {
+  const { geometry, material, useAppearanceVariants } = createFishModelInstance(variantIndex);
   addFishCurveAttributes(geometry, count);
   enableFishCurveDeformation(material);
 
@@ -37,7 +37,9 @@ export function createFishMesh(count) {
   mesh.renderOrder = 2;
 
   for (let i = 0; i < count; i += 1) {
-    const variant = fishConfig.appearanceVariants[i % fishConfig.appearanceVariants.length];
+    const variant = useAppearanceVariants
+      ? fishConfig.appearanceVariants[i % fishConfig.appearanceVariants.length]
+      : fishConfig.bodyColor;
     mesh.setColorAt(
       i,
       i === fishConfig.highlightedIndex ? fishConfig.highlightedColor : variant,
