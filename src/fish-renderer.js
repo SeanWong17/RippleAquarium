@@ -8,5 +8,5 @@ export {
   disposeConeSchoolMesh,
   updateConeSchoolInstances,
 } from "./fish/cone-school-renderer.js";
-export { loadFishModel } from "./fish/model-loader.js";
+export { getFishModelCount, loadFishModel } from "./fish/model-loader.js";
 export { getFishHeadPose } from "./fish/pose.js";

@@ -2,31 +2,50 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { fishConfig } from "./config.js";
 
-const fishModelUrl = new URL("./cartoon.glb", import.meta.url);
+const fishModelSources = [
+  {
+    key: "cartoon",
+    url: new URL("./cartoon.glb", import.meta.url),
+    axes: new THREE.Matrix4().set(
+      0,
+      -1,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      1,
+    ),
+  },
+  {
+    key: "clown",
+    url: new URL("./models/clownFish.glb", import.meta.url),
+    axes: new THREE.Matrix4().makeRotationY(Math.PI),
+  },
+  {
+    key: "gray",
+    url: new URL("./models/grayFish.glb", import.meta.url),
+    axes: new THREE.Matrix4().makeRotationY(Math.PI),
+  },
+  {
+    key: "koi",
+    url: new URL("./models/koiFish.glb", import.meta.url),
+    axes: new THREE.Matrix4().makeRotationY(Math.PI),
+  },
+];
 const tmpBox = new THREE.Box3();
 const tmpCenter = new THREE.Vector3();
 const tmpSize = new THREE.Vector3();
 
-const rawModelToFishAxes = new THREE.Matrix4().set(
-  0,
-  -1,
-  0,
-  0,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  -1,
-  0,
-  0,
-  0,
-  0,
-  1,
-);
-
-let fishModel = createFallbackFishModel();
+let fishModels = [createFallbackFishModel("fallback")];
 let fishModelLoadPromise = null;
 
 export async function loadFishModel() {
@@ -34,21 +53,34 @@ export async function loadFishModel() {
     return fishModelLoadPromise;
   }
 
-  fishModelLoadPromise = new GLTFLoader()
-    .loadAsync(fishModelUrl.href)
-    .then((gltf) => {
-      fishModel = createFishModelFromGltf(gltf);
-      return fishModel;
-    })
-    .catch((error) => {
-      console.warn("Failed to load fish model; using fallback fish geometry.", error);
-      return fishModel;
+  const loader = new GLTFLoader();
+  fishModelLoadPromise = Promise.allSettled(
+    fishModelSources.map((source) => loader.loadAsync(source.url.href)),
+  )
+    .then((results) => {
+      const loaded = [];
+      for (let i = 0; i < results.length; i += 1) {
+        const result = results[i];
+        const source = fishModelSources[i];
+        if (result.status === "fulfilled") {
+          loaded.push(createFishModelFromGltf(result.value, source));
+        } else {
+          console.warn(`Failed to load ${source.key} fish model.`, result.reason);
+        }
+      }
+      fishModels = loaded.length ? loaded : fishModels;
+      return fishModels;
     });
 
   return fishModelLoadPromise;
 }
 
-export function createFishModelInstance() {
+export function getFishModelCount() {
+  return fishModels.length;
+}
+
+export function createFishModelInstance(variantIndex = 0) {
+  const fishModel = fishModels[variantIndex % fishModels.length] ?? fishModels[0];
   return {
     geometry: fishModel.geometry.clone(),
     material: cloneFishMaterial(fishModel.material),
@@ -82,14 +114,15 @@ export function disposeFishMaterial(material) {
   material.dispose();
 }
 
-function createFishModelFromGltf(gltf) {
+function createFishModelFromGltf(gltf, source) {
   const sourceMesh = findPrimaryMesh(gltf.scene);
   if (!sourceMesh) {
     throw new Error("Fish model does not contain a mesh.");
   }
 
   return {
-    geometry: createFishGeometry(sourceMesh.geometry),
+    key: source.key,
+    geometry: createFishGeometry(sourceMesh.geometry, source.axes),
     material: cloneFishMaterial(sourceMesh.material),
   };
 }
@@ -114,11 +147,10 @@ function findPrimaryMesh(root) {
   return result;
 }
 
-function createFishGeometry(sourceGeometry) {
+function createFishGeometry(sourceGeometry, axes) {
   const geometry = sourceGeometry.clone();
 
-  // Blender-exported fish meshes are long on raw X, head toward -X, belly toward +Z.
-  geometry.applyMatrix4(rawModelToFishAxes);
+  geometry.applyMatrix4(axes);
   geometry.computeBoundingBox();
   tmpBox.copy(geometry.boundingBox);
   tmpBox.getCenter(tmpCenter);
@@ -137,8 +169,9 @@ function createFishGeometry(sourceGeometry) {
   return geometry;
 }
 
-function createFallbackFishModel() {
+function createFallbackFishModel(key = "fallback") {
   return {
+    key,
     geometry: createFallbackFishGeometry(),
     material: createFallbackFishMaterial(),
   };

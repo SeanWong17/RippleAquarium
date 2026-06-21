@@ -15,6 +15,7 @@ import {
   createFishMesh,
   disposeConeSchoolMesh,
   disposeFishMesh,
+  getFishModelCount,
   loadFishModel,
   updateConeSchoolInstances,
   updateFishInstances,
@@ -72,7 +73,7 @@ const simulationControlSettings = {
   topMargin: "topBoundaryMargin",
 };
 
-let fishMesh = null;
+let fishMeshes = [];
 let coneSchoolMesh = null;
 let coralReef = null;
 let coralIntro = null;
@@ -352,20 +353,25 @@ function setConeCount(count) {
 }
 
 function rebuildFishMesh() {
-  if (fishMesh) {
-    scene.remove(fishMesh);
-    disposeFishMesh(fishMesh);
+  for (const mesh of fishMeshes) {
+    scene.remove(mesh);
+    disposeFishMesh(mesh);
   }
+  fishMeshes = [];
   if (coneSchoolMesh) {
     scene.remove(coneSchoolMesh);
     disposeConeSchoolMesh(coneSchoolMesh);
   }
 
   const schools = splitRenderableSchools(simulation.fish);
+  const fishGroups = splitFishByModel(schools.fish);
 
-  fishMesh = createFishMesh(schools.fish.length);
-  scene.add(fishMesh);
-  updateFishInstances(fishMesh, schools.fish);
+  fishMeshes = fishGroups.map((group, variantIndex) => {
+    const mesh = createFishMesh(group.length, variantIndex);
+    scene.add(mesh);
+    updateFishInstances(mesh, group);
+    return mesh;
+  });
 
   coneSchoolMesh = createConeSchoolMesh(schools.cones.length);
   scene.add(coneSchoolMesh);
@@ -384,7 +390,10 @@ function animate() {
       traceIndex: headingDebugger?.traceIndex,
     });
     const schools = splitRenderableSchools(simulation.fish);
-    updateFishInstances(fishMesh, schools.fish);
+    const fishGroups = splitFishByModel(schools.fish);
+    for (let i = 0; i < fishMeshes.length; i += 1) {
+      updateFishInstances(fishMeshes[i], fishGroups[i] ?? []);
+    }
     updateConeSchoolInstances(coneSchoolMesh, schools.cones);
     queueFishSurfaceImpacts(simulation.fish);
     headingDebugger?.sample({
@@ -403,6 +412,17 @@ function animate() {
   cameraRig.update();
   cameraPanel.update();
   renderer.render(scene, cameraRig.activeCamera);
+}
+
+function splitFishByModel(fish) {
+  const modelCount = Math.max(1, getFishModelCount());
+  const groups = Array.from({ length: modelCount }, () => []);
+
+  for (let i = 0; i < fish.length; i += 1) {
+    groups[i % modelCount].push(fish[i]);
+  }
+
+  return groups;
 }
 
 function updateCoralIntro() {
