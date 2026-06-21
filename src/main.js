@@ -418,6 +418,7 @@ function applyCoralSettingsFromControls() {
   coralReef?.rebuild({
     count: readControlValue("coralCount"),
     scale: readControlValue("coralScale"),
+    growth: null,
   });
 }
 
@@ -502,6 +503,7 @@ function animate() {
   }
 
   updateCoralIntro();
+  coralReef?.update();
   aquariumEffects.update(simulationTime);
   cameraRig.update();
   cameraPanel.update();

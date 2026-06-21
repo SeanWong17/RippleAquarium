@@ -18,6 +18,8 @@ const coralColors = [
   new THREE.Color(0x7e5ac7),
 ];
 
+const addedCoralGrowthDuration = 1800;
+
 export async function createCoralReef({
   count = 100,
   scale = 2,
@@ -36,11 +38,22 @@ export async function createCoralReef({
     animatedGrowth: null,
     seed,
     rebuild(nextSettings = {}) {
+      const previousCount = getTargetCount(reef);
+      const previousGrowth = Array.isArray(reef.animatedGrowth)
+        ? reef.animatedGrowth
+        : null;
       if (Number.isFinite(nextSettings.count)) reef.count = nextSettings.count;
       if (Number.isFinite(nextSettings.scale)) reef.scale = nextSettings.scale;
       if (Array.isArray(nextSettings.growth)) reef.animatedGrowth = nextSettings.growth;
       if (nextSettings.growth === null) reef.animatedGrowth = null;
+      if (!Array.isArray(reef.animatedGrowth)) {
+        prepareCoralGrowth(reef, previousCount, previousGrowth);
+      }
       syncCorals(reef);
+    },
+    update(now = performance.now()) {
+      if (Array.isArray(reef.animatedGrowth)) return;
+      if (updateCoralGrowth(reef, now)) syncCorals(reef);
     },
     dispose() {
       group.clear();
@@ -116,18 +129,81 @@ function buildCoralPool(reef, models) {
     coral.userData.baseRotationY = random() * Math.PI * 2;
     coral.rotation.y = coral.userData.baseRotationY;
     coral.userData.baseScale = baseScale;
+    coral.userData.growth = i < reef.count ? 1 : 0;
+    coral.userData.growthStartedAt = 0;
+    coral.userData.growing = false;
     coral.castShadow = true;
     coral.receiveShadow = true;
     reef.group.add(coral);
   }
 }
 
+function getTargetCount(reef) {
+  return Math.max(0, Math.min(reef.maxCount, Math.floor(reef.count)));
+}
+
+function prepareCoralGrowth(reef, previousCount, previousGrowth = null) {
+  const targetCount = getTargetCount(reef);
+  const now = performance.now();
+
+  for (let i = 0; i < reef.group.children.length; i += 1) {
+    const coral = reef.group.children[i];
+    if (i >= targetCount) {
+      coral.userData.growth = 0;
+      coral.userData.growing = false;
+      continue;
+    }
+
+    if (i >= previousCount) {
+      coral.userData.growth = 0;
+      coral.userData.growthStartedAt = now;
+      coral.userData.growing = true;
+      continue;
+    }
+
+    if (previousGrowth) {
+      coral.userData.growth = previousGrowth[i] ?? coral.userData.growth;
+      coral.userData.growthStartedAt =
+        now - coral.userData.growth * addedCoralGrowthDuration;
+      coral.userData.growing = coral.userData.growth < 1;
+      continue;
+    }
+
+    if (!coral.userData.growing && coral.userData.growth <= 0.001) {
+      coral.userData.growth = 1;
+    }
+  }
+}
+
+function updateCoralGrowth(reef, now) {
+  let changed = false;
+
+  for (const coral of reef.group.children) {
+    if (!coral.userData.growing) continue;
+
+    const progress = THREE.MathUtils.clamp(
+      (now - coral.userData.growthStartedAt) / addedCoralGrowthDuration,
+      0,
+      1,
+    );
+    coral.userData.growth = progress * progress * (3 - 2 * progress);
+    changed = true;
+
+    if (progress >= 1) {
+      coral.userData.growth = 1;
+      coral.userData.growing = false;
+    }
+  }
+
+  return changed;
+}
+
 function syncCorals(reef) {
-  const targetCount = Math.max(0, Math.min(reef.maxCount, Math.floor(reef.count)));
+  const targetCount = getTargetCount(reef);
   for (let i = 0; i < reef.group.children.length; i += 1) {
     const coral = reef.group.children[i];
     coral.visible = i < targetCount;
-    const growth = reef.animatedGrowth?.[i] ?? 1;
+    const growth = reef.animatedGrowth?.[i] ?? coral.userData.growth ?? 1;
     coral.scale.setScalar(coral.userData.baseScale * reef.scale * growth);
     coral.position.y = coral.userData.baseY - (1 - growth) * 0.18;
     coral.rotation.y = coral.userData.baseRotationY + (1 - growth) * 0.22;
