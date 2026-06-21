@@ -19,8 +19,9 @@ const coralColors = [
 ];
 
 export async function createCoralReef({
-  count = 90,
-  scale = 1,
+  count = 100,
+  scale = 2,
+  maxCount = 200,
   seed = 73,
 } = {}) {
   const models = await loadCoralModels();
@@ -31,11 +32,15 @@ export async function createCoralReef({
     group,
     count,
     scale,
+    maxCount,
+    animatedGrowth: null,
     seed,
     rebuild(nextSettings = {}) {
       if (Number.isFinite(nextSettings.count)) reef.count = nextSettings.count;
       if (Number.isFinite(nextSettings.scale)) reef.scale = nextSettings.scale;
-      rebuildCorals(reef, models);
+      if (Array.isArray(nextSettings.growth)) reef.animatedGrowth = nextSettings.growth;
+      if (nextSettings.growth === null) reef.animatedGrowth = null;
+      syncCorals(reef);
     },
     dispose() {
       group.clear();
@@ -46,7 +51,8 @@ export async function createCoralReef({
     },
   };
 
-  rebuildCorals(reef, models);
+  buildCoralPool(reef, models);
+  syncCorals(reef);
   return reef;
 }
 
@@ -95,23 +101,35 @@ function normalizeCoralGeometry(sourceGeometry) {
   return geometry;
 }
 
-function rebuildCorals(reef, models) {
-  reef.group.clear();
+function buildCoralPool(reef, models) {
   const random = mulberry32(reef.seed);
-  const targetCount = Math.max(0, Math.floor(reef.count));
 
-  for (let i = 0; i < targetCount; i += 1) {
+  for (let i = 0; i < reef.maxCount; i += 1) {
     const model = models[i % models.length];
     const coral = new THREE.Mesh(model.geometry, model.material);
     const x = (random() - 0.5) * aquariumHalfSize.x * 1.68;
     const z = (random() - 0.5) * aquariumHalfSize.z * 1.68;
-    const baseScale = THREE.MathUtils.lerp(0.38, 0.95, random()) * reef.scale;
+    const baseScale = THREE.MathUtils.lerp(0.38, 0.95, random());
 
     coral.position.set(x, aquariumFloorY + 0.015, z);
-    coral.rotation.y = random() * Math.PI * 2;
-    coral.scale.setScalar(baseScale);
+    coral.userData.baseY = coral.position.y;
+    coral.userData.baseRotationY = random() * Math.PI * 2;
+    coral.rotation.y = coral.userData.baseRotationY;
+    coral.userData.baseScale = baseScale;
     coral.castShadow = true;
     coral.receiveShadow = true;
     reef.group.add(coral);
+  }
+}
+
+function syncCorals(reef) {
+  const targetCount = Math.max(0, Math.min(reef.maxCount, Math.floor(reef.count)));
+  for (let i = 0; i < reef.group.children.length; i += 1) {
+    const coral = reef.group.children[i];
+    coral.visible = i < targetCount;
+    const growth = reef.animatedGrowth?.[i] ?? 1;
+    coral.scale.setScalar(coral.userData.baseScale * reef.scale * growth);
+    coral.position.y = coral.userData.baseY - (1 - growth) * 0.18;
+    coral.rotation.y = coral.userData.baseRotationY + (1 - growth) * 0.22;
   }
 }

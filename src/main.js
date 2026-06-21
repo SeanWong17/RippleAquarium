@@ -75,6 +75,7 @@ const simulationControlSettings = {
 let fishMesh = null;
 let coneSchoolMesh = null;
 let coralReef = null;
+let coralIntro = null;
 let simulationPaused = false;
 let pendingSimulationSteps = 0;
 let simulationTime = 0;
@@ -106,12 +107,14 @@ try {
   const [, loadedCoralReef] = await Promise.all([
     loadFishModel(),
     createCoralReef({
-      count: readControlValue("coralCount"),
-      scale: readControlValue("coralScale"),
+      count: 0,
+      scale: 0,
+      maxCount: Number(controls.coralCount.input.max),
     }),
   ]);
   coralReef = loadedCoralReef;
   scene.add(coralReef.group);
+  startCoralIntro();
 } finally {
   modelLoading.finish();
 }
@@ -290,6 +293,7 @@ function applyControlChange(key) {
   }
 
   if (key.startsWith("coral")) {
+    coralIntro = null;
     applyCoralSettingsFromControls();
     return;
   }
@@ -323,6 +327,16 @@ function applyCoralSettingsFromControls() {
     count: readControlValue("coralCount"),
     scale: readControlValue("coralScale"),
   });
+}
+
+function startCoralIntro() {
+  coralIntro = {
+    startedAt: performance.now(),
+    duration: 3600,
+    targetCount: readControlValue("coralCount"),
+    targetScale: readControlValue("coralScale"),
+  };
+  coralReef.rebuild({ count: 0, scale: 0 });
 }
 
 function setFishCount(count) {
@@ -384,10 +398,40 @@ function animate() {
     );
   }
 
+  updateCoralIntro();
   aquariumEffects.update(simulationTime);
   cameraRig.update();
   cameraPanel.update();
   renderer.render(scene, cameraRig.activeCamera);
+}
+
+function updateCoralIntro() {
+  if (!coralIntro || !coralReef) return;
+
+  const progress = Math.min(
+    1,
+    (performance.now() - coralIntro.startedAt) / coralIntro.duration,
+  );
+  const growth = Array.from({ length: coralReef.maxCount }, (_, index) => {
+    const orderProgress = index / Math.max(1, coralIntro.targetCount - 1);
+    const local = THREE.MathUtils.clamp((progress - orderProgress * 0.58) / 0.42, 0, 1);
+    return local * local * (3 - 2 * local);
+  });
+  const visibleCount = growth.reduce((count, value) => count + (value > 0.001 ? 1 : 0), 0);
+  coralReef.rebuild({
+    count: visibleCount,
+    scale: coralIntro.targetScale,
+    growth,
+  });
+
+  if (progress >= 1) {
+    coralReef.rebuild({
+      count: coralIntro.targetCount,
+      scale: coralIntro.targetScale,
+      growth: null,
+    });
+    coralIntro = null;
+  }
 }
 
 function splitRenderableSchools(fish) {
