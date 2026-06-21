@@ -6,6 +6,8 @@ Ripple Aquarium is an interactive Three.js aquarium visualization. It combines i
 
 Live demo: [https://seanwong17.github.io/RippleAquarium/](https://seanwong17.github.io/RippleAquarium/)
 
+![Ripple Aquarium demo](./assets/demo.gif)
+
 ## Features
 
 - The sardine school uses boids-style behavior for alignment, cohesion, separation, obstacle avoidance, and boundary steering.
@@ -51,5 +53,3 @@ If you redistribute or deploy this project, keep these credits and review the li
 ## License
 
 This project is licensed under the [GNU Affero General Public License v3.0](./LICENSE).
-
-AGPL-3.0 is a strong copyleft license. If you modify, redistribute, or provide a modified version as a network service, you are generally required to provide the corresponding source code to users and keep derivative works under a compatible open-source license. Review the license carefully before commercial use or public deployment.

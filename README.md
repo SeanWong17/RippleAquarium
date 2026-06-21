@@ -6,6 +6,8 @@
 
 在线演示：[https://seanwong17.github.io/RippleAquarium/](https://seanwong17.github.io/RippleAquarium/)
 
+![涟漪鱼缸演示](./assets/demo.gif)
+
 ## 功能
 
 - 沙丁鱼鱼群使用 boids 行为模拟，会自动对齐、聚集、分离、避障和回避边界。
@@ -51,5 +53,3 @@ http://127.0.0.1:8001/index.html
 ## 许可证
 
 本项目使用 [GNU Affero General Public License v3.0](./LICENSE)。
-
-AGPL-3.0 是强 copyleft 协议：如果你修改、分发，或把修改后的版本作为网络服务提供给用户使用，通常需要向用户提供对应源码，并让派生作品继续使用兼容的开源方式发布。请在正式商用或公开部署前自行确认合规要求。
