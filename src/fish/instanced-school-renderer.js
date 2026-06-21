@@ -22,8 +22,8 @@ const tmpQuaternion = new THREE.Quaternion();
 const tmpMatrix = new THREE.Matrix4();
 const tmpScale = new THREE.Vector3();
 
-export function createFishMesh(count, variantIndex = 0) {
-  const { geometry, material } = createFishModelInstance(variantIndex);
+export function createFishMesh(count) {
+  const { geometry, material } = createFishModelInstance();
   addFishCurveAttributes(geometry, count);
   enableFishCurveDeformation(material);
 
