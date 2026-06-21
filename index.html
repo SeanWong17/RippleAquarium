@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>鱼群水波模拟</title>
+    <title>涟漪鱼缸</title>
     <link rel="stylesheet" href="./src/styles.css" />
     <script type="importmap">
       {
@@ -17,7 +17,27 @@
   <body>
     <main id="app">
       <canvas id="scene"></canvas>
-      <button id="controls-toggle" class="controls-toggle" type="button" aria-expanded="true">
+      <div class="top-links" data-i18n-aria-label="topLinksAria" aria-label="项目链接">
+        <a
+          class="github-link"
+          href="https://github.com/SeanWong17/RippleAquarium"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n-title="repoTitle"
+          data-i18n-aria-label="repoAria"
+          title="在 GitHub 上查看项目"
+          aria-label="在 GitHub 上查看涟漪鱼缸源码"
+        >
+          <svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+          </svg>
+        </a>
+        <div class="lang-switcher" data-i18n-aria-label="languageAria" aria-label="语言切换">
+          <button class="lang-btn" type="button" data-lang="zh">中文</button>
+          <button class="lang-btn" type="button" data-lang="en">EN</button>
+        </div>
+      </div>
+      <button id="controls-toggle" class="controls-toggle" type="button" aria-expanded="true" data-i18n="hideParams">
         隐藏参数
       </button>
       <div
@@ -25,165 +45,166 @@
         class="model-loading"
         role="status"
         aria-live="polite"
+        data-i18n-aria-label="loadingAria"
         aria-label="加载鱼模型"
       >
-        <span>加载中..</span>
+        <span data-i18n="loading">加载中..</span>
       </div>
-      <section id="control-panel" class="panel controls-panel" aria-label="鱼缸控制参数">
-        <h2>控制参数</h2>
-        <h3>鱼群</h3>
-        <div class="playback-controls" aria-label="模拟播放控制" hidden>
-          <button id="playback-toggle" class="toggle-button" type="button" aria-pressed="false">
+      <section id="control-panel" class="panel controls-panel" data-i18n-aria-label="controlsAria" aria-label="鱼缸控制参数">
+        <h2 data-i18n="controlTitle">控制参数</h2>
+        <h3 data-i18n="fishGroup">鱼群</h3>
+        <div class="playback-controls" data-i18n-aria-label="playbackAria" aria-label="模拟播放控制" hidden>
+          <button id="playback-toggle" class="toggle-button" type="button" aria-pressed="false" data-i18n="pause">
             暂停
           </button>
-          <button id="step-frame" type="button" disabled>单步</button>
+          <button id="step-frame" type="button" disabled data-i18n="step">单步</button>
         </div>
 
-        <label>
+        <label data-i18n="sardineCount">
           沙丁鱼数量
           <input id="count" type="range" min="1" max="260" step="1" value="60" />
           <output id="count-value">60</output>
         </label>
 
-        <label>
+        <label data-i18n="koiCount">
           锦鲤数量
           <input id="koi-count" type="range" min="0" max="120" step="1" value="24" />
           <output id="koi-count-value">24</output>
         </label>
 
-        <label>
+        <label data-i18n="clownfishCount">
           小丑鱼数量
           <input id="clownfish-count" type="range" min="0" max="40" step="1" value="18" />
           <output id="clownfish-count-value">18</output>
         </label>
 
-        <label>
+        <label data-i18n="perception">
           感知范围
           <input id="perception" type="range" min="1.2" max="5.2" step="0.1" value="2.7" />
           <output id="perception-value">2.7</output>
         </label>
 
-        <label>
+        <label data-i18n="sardineSpeed">
           沙丁鱼速度
           <input id="speed-scale" type="range" min="0.2" max="2" step="0.05" value="1" />
           <output id="speed-scale-value">1</output>
         </label>
 
-        <label>
+        <label data-i18n="separation">
           分离强度
           <input id="separation" type="range" min="0.4" max="3" step="0.1" value="1.35" />
           <output id="separation-value">1.35</output>
         </label>
 
-        <label>
+        <label data-i18n="avoidance">
           避障强度
           <input id="avoidance" type="range" min="2" max="18" step="0.5" value="10" />
           <output id="avoidance-value">10</output>
         </label>
 
-        <label>
+        <label data-i18n="turnRate">
           转向速度
           <input id="turn-rate" type="range" min="0.2" max="20" step="0.1" value="4" />
           <output id="turn-rate-value">4</output>
         </label>
 
-        <label>
+        <label data-i18n="topMargin">
           顶部回避
           <input id="top-margin" type="range" min="0.2" max="2" step="0.05" value="0.42" />
           <output id="top-margin-value">0.42</output>
         </label>
 
-        <h3>锦鲤</h3>
-        <label>
+        <h3 data-i18n="koiGroup">锦鲤</h3>
+        <label data-i18n="koiPerception">
           锦鲤感知范围
           <input id="koi-perception" type="range" min="1.2" max="5.2" step="0.1" value="2.7" />
           <output id="koi-perception-value">2.7</output>
         </label>
 
-        <label>
+        <label data-i18n="koiSpeed">
           锦鲤速度
           <input id="koi-speed-scale" type="range" min="0.2" max="2" step="0.05" value="1" />
           <output id="koi-speed-scale-value">1</output>
         </label>
 
-        <label>
+        <label data-i18n="koiSeparation">
           锦鲤分离强度
           <input id="koi-separation" type="range" min="0.4" max="3" step="0.1" value="1.35" />
           <output id="koi-separation-value">1.35</output>
         </label>
 
-        <label>
+        <label data-i18n="koiAvoidance">
           锦鲤避障强度
           <input id="koi-avoidance" type="range" min="2" max="18" step="0.5" value="10" />
           <output id="koi-avoidance-value">10</output>
         </label>
 
-        <label>
+        <label data-i18n="koiTurnRate">
           锦鲤转向速度
           <input id="koi-turn-rate" type="range" min="0.2" max="20" step="0.1" value="4" />
           <output id="koi-turn-rate-value">4</output>
         </label>
 
-        <label>
+        <label data-i18n="koiTopMargin">
           锦鲤顶部回避
           <input id="koi-top-margin" type="range" min="0.2" max="2" step="0.05" value="0.42" />
           <output id="koi-top-margin-value">0.42</output>
         </label>
 
-        <h3>水面</h3>
-        <label>
+        <h3 data-i18n="waterGroup">水面</h3>
+        <label data-i18n="waterForce">
           水波强度
           <input id="water-force" type="range" min="0.02" max="0.2" step="0.005" value="0.085" />
           <output id="water-force-value">0.085</output>
         </label>
 
-        <label>
+        <label data-i18n="waterRadius">
           波源半径
           <input id="water-radius" type="range" min="0.18" max="0.9" step="0.02" value="0.42" />
           <output id="water-radius-value">0.42</output>
         </label>
 
-        <label>
+        <label data-i18n="waterHeight">
           波面高度
           <input id="water-height" type="range" min="0.08" max="0.8" step="0.02" value="0.34" />
           <output id="water-height-value">0.34</output>
         </label>
 
-        <label>
+        <label data-i18n="waterPersistence">
           余波持久
           <input id="water-persistence" type="range" min="0.88" max="0.98" step="0.005" value="0.94" />
           <output id="water-persistence-value">0.94</output>
         </label>
 
-        <label>
+        <label data-i18n="surfaceBand">
           触发表层
           <input id="surface-band" type="range" min="0.2" max="1.4" step="0.05" value="0.72" />
           <output id="surface-band-value">0.72</output>
         </label>
 
-        <h3>画面</h3>
-        <label>
+        <h3 data-i18n="sceneGroup">画面</h3>
+        <label data-i18n="coralCount">
           珊瑚数量
           <input id="coral-count" type="range" min="100" max="200" step="1" value="100" />
           <output id="coral-count-value">100</output>
         </label>
 
-        <label>
+        <label data-i18n="coralScale">
           珊瑚大小
           <input id="coral-scale" type="range" min="2" max="4" step="0.05" value="2" />
           <output id="coral-scale-value">2</output>
         </label>
 
-        <label>
+        <label data-i18n="light">
           光照
           <input id="light" type="range" min="0.2" max="2.5" step="0.05" value="1.6" />
           <output id="light-value">1.6</output>
         </label>
       </section>
 
-      <section class="panel camera-panel" aria-label="相机控制" hidden>
+      <section class="panel camera-panel" data-i18n-aria-label="cameraAria" aria-label="相机控制" hidden>
         <div class="panel-header">
-          <button id="copy-camera-json" type="button">复制相机参数</button>
+          <button id="copy-camera-json" type="button" data-i18n="copyCamera">复制相机参数</button>
         </div>
 
         <p id="copy-camera-status" class="copy-status" role="status" aria-live="polite"></p>

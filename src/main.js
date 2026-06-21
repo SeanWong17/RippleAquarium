@@ -18,6 +18,12 @@ import {
 } from "./fish-renderer.js";
 import { createHeadingDebugger } from "./heading-debugger.js";
 import {
+  applyTranslations,
+  getLanguage,
+  setLanguage,
+  t,
+} from "./i18n.js";
+import {
   addLighting,
   addObstacles,
   addAquarium,
@@ -109,6 +115,7 @@ const waterInteraction = {
   surfaceBand: 0.72,
 };
 const fishSurfaceState = new WeakMap();
+let controlsPanelHidden = false;
 
 const lighting = addLighting(scene);
 lighting.setIntensity(readControlValue("light"));
@@ -122,6 +129,7 @@ bindPlaybackControls();
 bindCameraToggle(cameraRig);
 bindUiPanelShortcuts();
 bindControlsPanel();
+bindLanguageSwitcher();
 bindWaterPointer();
 const cameraPanel = bindCameraPanel(cameraRig);
 const modelLoading = bindModelLoading();
@@ -183,6 +191,35 @@ function bindPlaybackControls() {
   syncPlaybackControls(toggleButton, stepButton);
 }
 
+function bindLanguageSwitcher() {
+  applyCurrentLanguage();
+
+  document.querySelectorAll(".lang-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!setLanguage(button.dataset.lang)) return;
+
+      applyCurrentLanguage();
+    });
+  });
+}
+
+function applyCurrentLanguage() {
+  applyTranslations();
+  syncLanguageButtons();
+  syncControlsToggle();
+  syncPlaybackControls(
+    getRequiredElement("#playback-toggle"),
+    getRequiredElement("#step-frame"),
+  );
+}
+
+function syncLanguageButtons() {
+  const language = getLanguage();
+  document.querySelectorAll(".lang-btn").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.lang === language);
+  });
+}
+
 function bindUiPanelShortcuts() {
   window.addEventListener("keydown", (event) => {
     if (event.repeat) return;
@@ -199,14 +236,18 @@ function bindUiPanelShortcuts() {
 
 function bindControlsPanel() {
   const toggleButton = getRequiredElement("#controls-toggle");
-  let hidden = false;
 
   toggleButton.addEventListener("click", () => {
-    hidden = !hidden;
-    app.dataset.controlsPanel = hidden ? "hidden" : "visible";
-    toggleButton.textContent = hidden ? "显示参数" : "隐藏参数";
-    toggleButton.setAttribute("aria-expanded", String(!hidden));
+    controlsPanelHidden = !controlsPanelHidden;
+    app.dataset.controlsPanel = controlsPanelHidden ? "hidden" : "visible";
+    syncControlsToggle();
   });
+}
+
+function syncControlsToggle() {
+  const toggleButton = getRequiredElement("#controls-toggle");
+  toggleButton.textContent = controlsPanelHidden ? t("showParams") : t("hideParams");
+  toggleButton.setAttribute("aria-expanded", String(!controlsPanelHidden));
 }
 
 function bindWaterPointer() {
@@ -298,7 +339,7 @@ function queueFishSurfaceImpacts(fish) {
 }
 
 function syncPlaybackControls(toggleButton, stepButton) {
-  toggleButton.textContent = simulationPaused ? "继续" : "暂停";
+  toggleButton.textContent = simulationPaused ? t("resume") : t("pause");
   toggleButton.setAttribute("aria-pressed", String(simulationPaused));
   stepButton.disabled = !simulationPaused;
 }
@@ -533,7 +574,7 @@ function bindCameraPanel(rig) {
   copyButton.addEventListener("click", async () => {
     const json = JSON.stringify(readCameraTransformSnapshot(rig), null, 2);
     const copied = await copyText(json);
-    copyStatus.textContent = copied ? "已复制相机参数" : "复制失败";
+    copyStatus.textContent = copied ? t("copySuccess") : t("copyFailed");
     window.clearTimeout(copyStatusTimeout);
     copyStatusTimeout = window.setTimeout(() => {
       copyStatus.textContent = "";

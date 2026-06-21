@@ -16,6 +16,7 @@ Live demo: [https://seanwong17.github.io/RippleAquarium/](https://seanwong17.git
 - The water surface uses a height-field simulation. Fish near the waterline, mouse clicks, and mouse drags can all trigger ripples.
 - Corals grow from zero count and zero size into the default reef whenever the page is opened or refreshed.
 - The right-side drawer can be collapsed and exposes Chinese controls for fish, water, coral, lighting, and visual tuning.
+- The visualization UI supports Chinese/English switching, with a GitHub repository link in the top-left corner.
 - The default camera is positioned closer to the aquarium for presentation.
 
 ## Run
