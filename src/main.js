@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { FishSchoolSimulation } from "./fish-school-simulation.js";
 import { bindCameraToggle, createCameraRig } from "./camera-rig.js";
+import { createCoralReef } from "./coral-reef.js";
 import {
   aquariumHalfSize,
   coneConfig,
@@ -58,6 +59,8 @@ const controls = {
   waterHeight: createControl("#water-height", "#water-height-value"),
   waterPersistence: createControl("#water-persistence", "#water-persistence-value"),
   surfaceBand: createControl("#surface-band", "#surface-band-value"),
+  coralCount: createControl("#coral-count", "#coral-count-value"),
+  coralScale: createControl("#coral-scale", "#coral-scale-value"),
   light: createControl("#light", "#light-value"),
 };
 
@@ -71,6 +74,7 @@ const simulationControlSettings = {
 
 let fishMesh = null;
 let coneSchoolMesh = null;
+let coralReef = null;
 let simulationPaused = false;
 let pendingSimulationSteps = 0;
 let simulationTime = 0;
@@ -99,7 +103,15 @@ bindWaterPointer();
 const cameraPanel = bindCameraPanel(cameraRig);
 const modelLoading = bindModelLoading();
 try {
-  await loadFishModel();
+  const [, loadedCoralReef] = await Promise.all([
+    loadFishModel(),
+    createCoralReef({
+      count: readControlValue("coralCount"),
+      scale: readControlValue("coralScale"),
+    }),
+  ]);
+  coralReef = loadedCoralReef;
+  scene.add(coralReef.group);
 } finally {
   modelLoading.finish();
 }
@@ -277,6 +289,11 @@ function applyControlChange(key) {
     return;
   }
 
+  if (key.startsWith("coral")) {
+    applyCoralSettingsFromControls();
+    return;
+  }
+
   if (key.startsWith("water") || key === "surfaceBand") {
     applyWaterSettingsFromControls();
     return;
@@ -298,6 +315,13 @@ function applyWaterSettingsFromControls() {
     radius: readControlValue("waterRadius"),
     displacement: readControlValue("waterHeight"),
     persistence: readControlValue("waterPersistence"),
+  });
+}
+
+function applyCoralSettingsFromControls() {
+  coralReef?.rebuild({
+    count: readControlValue("coralCount"),
+    scale: readControlValue("coralScale"),
   });
 }
 
