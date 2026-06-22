@@ -5,6 +5,29 @@ export const aquariumSize = aquariumHalfSize.clone().multiplyScalar(2);
 export const aquariumFloorY = -aquariumHalfSize.y;
 export const waterLevelY = aquariumHalfSize.y - 0.72;
 
+export const pineappleHouseDecor = {
+  position: new THREE.Vector3(-4.65, aquariumFloorY, 2.75),
+  rotationY: THREE.MathUtils.degToRad(16),
+  bodyHeight: 4.28,
+  height: 6.08,
+  bodyRadius: 1.74,
+  footprintRadius: 3.53,
+};
+
+export const spongebobPatrickDecor = {
+  position: pineappleHouseDecor.position
+    .clone()
+    .add(new THREE.Vector3(1.48, 0, 4.2))
+    .setY(aquariumFloorY),
+  height: 2.35,
+  rotationY: THREE.MathUtils.degToRad(-9),
+};
+
+export const frontDecorCoralMask = {
+  position: pineappleHouseDecor.position.clone().add(new THREE.Vector3(0.8, 0, 4.35)),
+  size: new THREE.Vector2(5.5, 3.75),
+};
+
 export const fishConfig = {
   radius: 0.6,
   length: 1.6,
@@ -72,17 +95,25 @@ export const simulationSettings = {
 
 export const obstacles = [
   {
-    position: new THREE.Vector3(-5.6, 1.4, -3.7),
-    radius: 1.45,
+    position: pineappleHouseDecor.position
+      .clone()
+      .setY(aquariumFloorY + pineappleHouseDecor.height * 0.42),
+    radius: pineappleHouseDecor.footprintRadius,
     shape: "box",
-    size: new THREE.Vector3(2.3, 2.3, 2.3),
+    size: new THREE.Vector3(4.35, 5.1, 4.05),
+    rotationY: pineappleHouseDecor.rotationY,
+    render: false,
+  },
+];
+
+export const coralExclusionZones = [
+  {
+    position: pineappleHouseDecor.position,
+    radius: pineappleHouseDecor.footprintRadius,
   },
   {
-    position: new THREE.Vector3(3.4, -1.8, 3.8),
-    radius: 1.75,
-    shape: "plate",
-    size: new THREE.Vector3(0.24, 2.8, 3.4),
-    rotationY: THREE.MathUtils.degToRad(-24),
+    position: frontDecorCoralMask.position,
+    shape: "box",
+    size: frontDecorCoralMask.size,
   },
-  { position: new THREE.Vector3(1.2, 2.6, -1.1), radius: 1.65 },
 ];

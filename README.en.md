@@ -142,6 +142,8 @@ This project integrates, adapts, and redesigns ideas from three public/open-sour
 | [vibe-motion/threejs-boids](https://github.com/vibe-motion/threejs-boids) | Base fish-school behavior, sardine-style boids movement, Three.js scene, and instanced fish rendering |
 | [aisparkedu/ripple](https://github.com/aisparkedu/ripple) | Interactive water-ripple behavior, adapted here into mouse-triggered and fish-triggered aquarium surface waves |
 | [Jaydeep-P/aquarium](https://github.com/Jaydeep-P/aquarium) | Aquarium visual direction, coral, clownfish, and koi references; coral and clownfish model assets in this project come from that project |
+| [Bfbbr-SpongeBob Pineapple House](https://sketchfab.com/3d-models/bfbbr-spongebob-pineapple-house-4e2d36c5f95645448b44af409432ae82) | Pineapple house seabed decor model by SMF Features Developed From Cheryl Hill, listed on Sketchfab as CC Attribution |
+| [NASB2 - SpongeBob and Patrick](https://sketchfab.com/3d-models/nasb2-spongebob-and-patrick-717a58577d554b86802162db847c7f13) | Character seabed decor model by SMF Features Developed From Cheryl Hill, listed on Sketchfab as CC Attribution |
 
 If you redistribute or deploy this project, keep these credits and review the license requirements of the upstream projects as well.
 

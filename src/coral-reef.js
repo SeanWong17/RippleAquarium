@@ -19,12 +19,14 @@ const coralColors = [
 ];
 
 const addedCoralGrowthDuration = 1800;
+const coralPlacementInset = 1.35;
 
 export async function createCoralReef({
   count = 100,
   scale = 2,
   maxCount = 200,
   seed = 73,
+  exclusionZones = [],
 } = {}) {
   const models = await loadCoralModels();
   const group = new THREE.Group();
@@ -37,6 +39,7 @@ export async function createCoralReef({
     maxCount,
     animatedGrowth: null,
     seed,
+    exclusionZones,
     rebuild(nextSettings = {}) {
       const previousCount = getTargetCount(reef);
       const previousGrowth = Array.isArray(reef.animatedGrowth)
@@ -120,11 +123,10 @@ function buildCoralPool(reef, models) {
   for (let i = 0; i < reef.maxCount; i += 1) {
     const model = models[i % models.length];
     const coral = new THREE.Mesh(model.geometry, model.material);
-    const x = (random() - 0.5) * aquariumHalfSize.x * 1.68;
-    const z = (random() - 0.5) * aquariumHalfSize.z * 1.68;
+    const position = sampleCoralPosition(random, reef.exclusionZones);
     const baseScale = THREE.MathUtils.lerp(0.38, 0.95, random());
 
-    coral.position.set(x, aquariumFloorY + 0.015, z);
+    coral.position.set(position.x, aquariumFloorY + 0.015, position.z);
     coral.userData.baseY = coral.position.y;
     coral.userData.baseRotationY = random() * Math.PI * 2;
     coral.rotation.y = coral.userData.baseRotationY;
@@ -136,6 +138,69 @@ function buildCoralPool(reef, models) {
     coral.receiveShadow = true;
     reef.group.add(coral);
   }
+}
+
+function sampleCoralPosition(random, exclusionZones) {
+  const fallback = { x: 0, z: 0 };
+
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const position = {
+      x: randomSignedRange(random, aquariumHalfSize.x - coralPlacementInset),
+      z: randomSignedRange(random, aquariumHalfSize.z - coralPlacementInset),
+    };
+    fallback.x = position.x;
+    fallback.z = position.z;
+
+    if (!isInExclusionZone(position, exclusionZones)) {
+      return position;
+    }
+  }
+
+  fallback.x = THREE.MathUtils.clamp(
+    fallback.x,
+    -aquariumHalfSize.x + coralPlacementInset,
+    aquariumHalfSize.x - coralPlacementInset,
+  );
+  fallback.z = fallback.z < 0
+    ? -aquariumHalfSize.z + coralPlacementInset
+    : aquariumHalfSize.z - coralPlacementInset;
+  return fallback;
+}
+
+function randomSignedRange(random, halfRange) {
+  return (random() * 2 - 1) * halfRange;
+}
+
+function isInExclusionZone(position, exclusionZones) {
+  for (const zone of exclusionZones) {
+    if (zone.shape === "box" && isInBoxExclusionZone(position, zone)) {
+      return true;
+    }
+
+    if (isInCircleExclusionZone(position, zone)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isInCircleExclusionZone(position, zone) {
+  const radius = zone.radius ?? 0;
+  if (radius <= 0) return false;
+
+  const dx = position.x - zone.position.x;
+  const dz = position.z - zone.position.z;
+  return dx * dx + dz * dz < radius * radius;
+}
+
+function isInBoxExclusionZone(position, zone) {
+  const halfX = zone.size.x * 0.5;
+  const halfZ = zone.size.y * 0.5;
+  const dx = Math.abs(position.x - zone.position.x);
+  const dz = Math.abs(position.z - zone.position.z);
+
+  return dx < halfX && dz < halfZ;
 }
 
 function getTargetCount(reef) {

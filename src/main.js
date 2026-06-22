@@ -3,8 +3,11 @@ import { FishSchoolSimulation } from "./fish-school-simulation.js";
 import { bindCameraToggle, createCameraRig } from "./camera-rig.js";
 import { createClownfishSchool } from "./clownfish-school.js";
 import { createCoralReef } from "./coral-reef.js";
+import { createPineappleHouseDecor } from "./decor/pineapple-house.js";
+import { createSpongebobPatrickDecor } from "./decor/spongebob-patrick.js";
 import {
   aquariumHalfSize,
+  coralExclusionZones,
   fishConfig,
   obstacles,
   simulationSettings,
@@ -134,14 +137,21 @@ bindWaterPointer();
 const cameraPanel = bindCameraPanel(cameraRig);
 const modelLoading = bindModelLoading();
 try {
-  const [, loadedCoralReef] = await Promise.all([
+  const [, loadedCoralReef, pineappleHouse, spongebobPatrick] = await Promise.all([
     loadFishModel(),
     createCoralReef({
       count: 0,
       scale: 0,
       maxCount: Number(controls.coralCount.input.max),
+      exclusionZones: coralExclusionZones,
     }),
+    createPineappleHouseDecor(),
+    createSpongebobPatrickDecor(),
   ]);
+  scene.add(pineappleHouse);
+  if (spongebobPatrick) {
+    scene.add(spongebobPatrick);
+  }
   coralReef = loadedCoralReef;
   scene.add(coralReef.group);
   clownfishSchool = createClownfishSchool(coralReef, {

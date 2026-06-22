@@ -134,6 +134,8 @@ export function addObstacles(scene, obstacles) {
   });
 
   for (const obstacle of obstacles) {
+    if (obstacle.render === false) continue;
+
     const mesh = new THREE.Mesh(createObstacleGeometry(obstacle), obstacleMaterial);
     mesh.position.copy(obstacle.position);
     if (obstacle.rotationY) {

@@ -142,6 +142,8 @@ RippleAquarium/
 | [vibe-motion/threejs-boids](https://github.com/vibe-motion/threejs-boids) | 当前项目的鱼群行为基础，提供沙丁鱼式 boids 运动、Three.js 场景和实例化鱼群渲染的起点 |
 | [aisparkedu/ripple](https://github.com/aisparkedu/ripple) | 参考水面涟漪交互思路，并改造成当前鱼缸中的鼠标/鱼体触发水波效果 |
 | [Jaydeep-P/aquarium](https://github.com/Jaydeep-P/aquarium) | 参考水族箱题材资源，借鉴珊瑚、小丑鱼和锦鲤等视觉元素方向；当前项目中珊瑚和小丑鱼模型资源来自该项目 |
+| [Bfbbr-SpongeBob Pineapple House](https://sketchfab.com/3d-models/bfbbr-spongebob-pineapple-house-4e2d36c5f95645448b44af409432ae82) | 鱼缸底部菠萝屋装饰模型，作者 SMF Features Developed From Cheryl Hill，Sketchfab 标注为 CC Attribution |
+| [NASB2 - SpongeBob and Patrick](https://sketchfab.com/3d-models/nasb2-spongebob-and-patrick-717a58577d554b86802162db847c7f13) | 鱼缸底部角色装饰模型，作者 SMF Features Developed From Cheryl Hill，Sketchfab 标注为 CC Attribution |
 
 如果你继续分发或部署本项目，请保留这些来源说明，并检查上游项目的许可证要求。
 
