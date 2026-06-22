@@ -20,6 +20,7 @@ export const spongebobPatrickDecor = {
     .add(new THREE.Vector3(1.48, 0, 4.2))
     .setY(aquariumFloorY),
   height: 2.35,
+  footprintRadius: 1.65,
   rotationY: THREE.MathUtils.degToRad(-9),
 };
 
@@ -115,5 +116,24 @@ export const coralExclusionZones = [
     position: frontDecorCoralMask.position,
     shape: "box",
     size: frontDecorCoralMask.size,
+  },
+];
+
+export const clownfishAvoidanceZones = [
+  {
+    position: pineappleHouseDecor.position,
+    radius: pineappleHouseDecor.footprintRadius + 0.55,
+    strength: 2.2,
+  },
+  {
+    position: spongebobPatrickDecor.position,
+    radius: spongebobPatrickDecor.footprintRadius + 0.45,
+    strength: 2.8,
+  },
+  {
+    position: frontDecorCoralMask.position,
+    shape: "box",
+    size: frontDecorCoralMask.size.clone().add(new THREE.Vector2(0.7, 0.65)),
+    strength: 2.5,
   },
 ];
