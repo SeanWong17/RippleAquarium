@@ -135,7 +135,7 @@ RippleAquarium/
 
 ## 🙏 Credits And References
 
-This project integrates, adapts, and redesigns ideas from three public/open-source projects:
+This project integrates, adapts, and redesigns ideas and assets from these public/open-source projects and model resources:
 
 | Project | Reference |
 |---------|-----------|
