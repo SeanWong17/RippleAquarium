@@ -137,28 +137,7 @@ bindWaterPointer();
 const cameraPanel = bindCameraPanel(cameraRig);
 const modelLoading = bindModelLoading();
 try {
-  const [, loadedCoralReef, pineappleHouse, spongebobPatrick] = await Promise.all([
-    loadFishModel(),
-    createCoralReef({
-      count: 0,
-      scale: 0,
-      maxCount: Number(controls.coralCount.input.max),
-      exclusionZones: coralExclusionZones,
-    }),
-    createPineappleHouseDecor(),
-    createSpongebobPatrickDecor(),
-  ]);
-  scene.add(pineappleHouse);
-  if (spongebobPatrick) {
-    scene.add(spongebobPatrick);
-  }
-  coralReef = loadedCoralReef;
-  scene.add(coralReef.group);
-  clownfishSchool = createClownfishSchool(coralReef, {
-    count: readControlValue("clownfishCount"),
-  });
-  scene.add(clownfishSchool.mesh);
-  startCoralIntro();
+  await loadFishModel();
 } finally {
   modelLoading.finish();
 }
@@ -169,6 +148,7 @@ rebuildKoiMesh();
 resize();
 window.addEventListener("resize", resize);
 renderer.setAnimationLoop(animate);
+void loadBackgroundSceneDetails();
 
 function bindControls() {
   for (const [key, control] of Object.entries(controls)) {
@@ -177,6 +157,35 @@ function bindControls() {
       syncControlOutput(control);
       applyControlChange(key);
     });
+  }
+}
+
+async function loadBackgroundSceneDetails() {
+  const loadedCoralReef = await createCoralReef({
+    count: 0,
+    scale: 0,
+    maxCount: Number(controls.coralCount.input.max),
+    exclusionZones: coralExclusionZones,
+  });
+  coralReef = loadedCoralReef;
+  scene.add(coralReef.group);
+  clownfishSchool = createClownfishSchool(coralReef, {
+    count: readControlValue("clownfishCount"),
+  });
+  scene.add(clownfishSchool.mesh);
+  startCoralIntro();
+
+  void loadDecorModels();
+}
+
+async function loadDecorModels() {
+  const [pineappleHouse, spongebobPatrick] = await Promise.all([
+    createPineappleHouseDecor(),
+    createSpongebobPatrickDecor(),
+  ]);
+  scene.add(pineappleHouse);
+  if (spongebobPatrick) {
+    scene.add(spongebobPatrick);
   }
 }
 
