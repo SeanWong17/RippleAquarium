@@ -61,7 +61,9 @@ It combines boids-style fish movement, height-field water ripples, coral growth 
 
 ## 🚀 Quick Start
 
-This is a static Three.js ESM project with no backend dependency.
+This is a static Three.js ESM project with no backend dependency. The Three.js runtime is vendored under `vendor/`, so no network access is needed once you serve it locally.
+
+> Note: because the project uses native ES Modules, browsers block module loading over the `file://` protocol. Open it through a local HTTP server rather than double-clicking `index.html`.
 
 ### 1. Get the project
 
@@ -82,6 +84,14 @@ Then open:
 
 ```text
 http://127.0.0.1:8001/index.html
+```
+
+### 3. Run tests (optional)
+
+The simulation logic (boids steering, avoidance rays, spatial grid) ships with unit tests using Node's built-in test runner, with no third-party dependencies:
+
+```bash
+npm test
 ```
 
 ---
@@ -106,9 +116,11 @@ http://127.0.0.1:8001/index.html
 |--------|----------------|
 | **Rendering** | Three.js + WebGL, with instanced rendering for the main fish schools |
 | **Boids** | Alignment, cohesion, separation, obstacle avoidance, boundary steering, and independent school parameters |
+| **Performance** | A uniform spatial grid powers neighbour queries, reducing the flocking cost from O(n²) to roughly O(n); hot paths reuse objects to avoid per-frame allocation |
 | **Fish motion** | Fish orientation follows velocity and pose changes; koi reuse sardine behavior while keeping a thicker body shape |
 | **Ripples** | Water mesh height-field propagation with mouse-triggered and fish-triggered disturbance |
 | **Coral growth** | The initialization sequence drives each coral from small to full size |
+| **Dependencies** | The Three.js runtime and addons are vendored under `vendor/`, so no network access is needed once served locally |
 | **i18n** | Lightweight frontend dictionary for Chinese/English UI text |
 
 ### Project Structure
@@ -116,8 +128,9 @@ http://127.0.0.1:8001/index.html
 ```text
 RippleAquarium/
 ├── assets/                 # README demo GIF
+├── vendor/three/           # Vendored Three.js runtime and addons
 ├── src/
-│   ├── fish/               # Fish model loading, pose, deformation, and instanced rendering
+│   ├── fish/               # Fish model loading, pose, deformation, instanced rendering, and spatial grid
 │   ├── coral/              # Coral model assets
 │   ├── fish-school-simulation.js
 │   ├── water-surface.js
@@ -125,7 +138,9 @@ RippleAquarium/
 │   ├── clownfish-school.js
 │   ├── i18n.js
 │   └── main.js
+├── test/                   # Simulation unit tests (Node built-in test runner)
 ├── index.html
+├── package.json
 ├── README.md
 ├── README.en.md
 └── LICENSE

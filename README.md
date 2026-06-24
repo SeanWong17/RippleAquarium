@@ -61,7 +61,9 @@
 
 ## 🚀 快速开始
 
-这是一个静态 Three.js ESM 项目，不依赖后端服务。
+这是一个静态 Three.js ESM 项目，不依赖后端服务。Three.js 运行时已本地化到 `vendor/`，本地服务器运行时无需联网。
+
+> 提示：由于使用了原生 ES Module，浏览器在 `file://` 协议下会拦截模块加载，因此需要通过本地 HTTP 服务器打开，不能直接双击 `index.html`。
 
 ### 1. 获取项目
 
@@ -82,6 +84,14 @@ python3 -m http.server 8001
 
 ```text
 http://127.0.0.1:8001/index.html
+```
+
+### 3. 运行测试（可选）
+
+模拟逻辑（boids 转向、避障射线、空间网格）带有单元测试，使用 Node 内置 test runner，无第三方依赖：
+
+```bash
+npm test
 ```
 
 ---
@@ -106,9 +116,11 @@ http://127.0.0.1:8001/index.html
 |------|----------|
 | **渲染** | Three.js + WebGL，使用实例化渲染绘制主鱼群 |
 | **鱼群行为** | boids 对齐、聚集、分离、避障、边界回避与独立鱼群参数 |
+| **性能** | 使用均匀空间网格做邻居查询，将鱼群行为从 O(n²) 降到近 O(n)，热路径复用对象避免每帧分配 |
 | **鱼体运动** | 基于速度方向和姿态变化驱动鱼体朝向，锦鲤复用沙丁鱼行为逻辑并保留更粗胖的体型 |
 | **水面涟漪** | 使用水面网格高度场传播波动，支持鼠标与鱼体触发 |
 | **珊瑚生长** | 初始化阶段按统一成长进度驱动每个珊瑚从小到大生长 |
+| **依赖** | Three.js 运行时与 addons 本地化到 `vendor/`，本地服务器运行时无需联网 |
 | **国际化** | 轻量级前端 i18n 字典，界面文案可在中英文之间切换 |
 
 ### 项目结构
@@ -116,8 +128,9 @@ http://127.0.0.1:8001/index.html
 ```text
 RippleAquarium/
 ├── assets/                 # README 演示动图
+├── vendor/three/           # 本地化的 Three.js 运行时与 addons
 ├── src/
-│   ├── fish/               # 鱼模型加载、姿态、变形和实例化渲染
+│   ├── fish/               # 鱼模型加载、姿态、变形、实例化渲染与空间网格
 │   ├── coral/              # 珊瑚模型资源
 │   ├── fish-school-simulation.js
 │   ├── water-surface.js
@@ -125,7 +138,9 @@ RippleAquarium/
 │   ├── clownfish-school.js
 │   ├── i18n.js
 │   └── main.js
+├── test/                   # 模拟逻辑单元测试（Node 内置 test runner）
 ├── index.html
+├── package.json
 ├── README.md
 ├── README.en.md
 └── LICENSE

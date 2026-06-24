@@ -136,7 +136,14 @@ void main() {
 
 export function createWaterSurface(renderer) {
   const impacts = new Float32Array(MAX_IMPACTS * 4);
+  // Pooled impact holders (plain number fields) so queueImpact runs without
+  // per-call heap allocation — it can fire once per near-surface fish/frame.
   const queuedImpacts = [];
+  const impactPool = [];
+
+  function acquireImpact() {
+    return impactPool.pop() ?? { fromX: 0, fromZ: 0, toX: 0, toZ: 0 };
+  }
 
   const simulationScene = new THREE.Scene();
   const simulationCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -214,16 +221,23 @@ export function createWaterSurface(renderer) {
 
   function queueImpact(from, to = from) {
     if (!isInsideWater(to)) return;
-    const impactTo = { x: to.x, z: to.z };
+    let toX = to.x;
     const dx = to.x - from.x;
     const dz = to.z - from.z;
-    if (dx * dx + dz * dz < 0.000001) impactTo.x += 0.18;
-    queuedImpacts.push({
-      from: new THREE.Vector2(from.x, from.z),
-      to: new THREE.Vector2(impactTo.x, impactTo.z),
-    });
+    if (dx * dx + dz * dz < 0.000001) toX += 0.18;
+
+    const impact = acquireImpact();
+    impact.fromX = from.x;
+    impact.fromZ = from.z;
+    impact.toX = toX;
+    impact.toZ = to.z;
+    queuedImpacts.push(impact);
+
     if (queuedImpacts.length > MAX_IMPACTS * 2) {
-      queuedImpacts.splice(0, queuedImpacts.length - MAX_IMPACTS * 2);
+      const dropped = queuedImpacts.splice(0, queuedImpacts.length - MAX_IMPACTS * 2);
+      for (let i = 0; i < dropped.length; i += 1) {
+        impactPool.push(dropped[i]);
+      }
     }
   }
 
@@ -239,10 +253,11 @@ export function createWaterSurface(renderer) {
     for (let i = 0; i < count; i += 1) {
       const impact = queuedImpacts.shift();
       const offset = i * 4;
-      impacts[offset] = impact.from.x;
-      impacts[offset + 1] = impact.from.y;
-      impacts[offset + 2] = impact.to.x;
-      impacts[offset + 3] = impact.to.y;
+      impacts[offset] = impact.fromX;
+      impacts[offset + 1] = impact.fromZ;
+      impacts[offset + 2] = impact.toX;
+      impacts[offset + 3] = impact.toZ;
+      impactPool.push(impact);
     }
 
     simulationMaterial.uniforms.uPrevious.value = readTarget.texture;

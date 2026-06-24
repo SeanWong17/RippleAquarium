@@ -1,0 +1,10 @@
+{
+  "name": "threejs-boids",
+  "version": "1.0.0",
+  "description": "Stylized aquarium boids simulation built on three.js",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --import ./test/three-resolver.js --test test/*.test.js"
+  }
+}

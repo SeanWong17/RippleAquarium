@@ -438,6 +438,7 @@ function startCoralIntro() {
     duration: 3600,
     targetCount: readControlValue("coralCount"),
     targetScale: readControlValue("coralScale"),
+    growthBuffer: new Array(coralReef.maxCount).fill(0),
   };
   coralReef.rebuild({ count: 0, scale: 0 });
 }
@@ -458,11 +459,9 @@ function rebuildFishMesh() {
     disposeFishMesh(fishMesh);
   }
 
-  const schools = splitRenderableSchools(simulation.fish);
-
-  fishMesh = createFishMeshByKey(schools.fish.length, "cartoon");
+  fishMesh = createFishMeshByKey(simulation.fish.length, "cartoon");
   scene.add(fishMesh);
-  updateFishInstances(fishMesh, schools.fish);
+  updateFishInstances(fishMesh, simulation.fish);
   cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex]);
 }
 
@@ -493,8 +492,7 @@ function animate() {
       traceIndex: headingDebugger?.traceIndex,
     });
     koiSimulation.update(simulationDt);
-    const schools = splitRenderableSchools(simulation.fish);
-    updateFishInstances(fishMesh, schools.fish);
+    updateFishInstances(fishMesh, simulation.fish);
     if (koiMesh) {
       updateFishInstances(koiMesh, koiSimulation.fish);
     }
@@ -527,14 +525,23 @@ function updateCoralIntro() {
     1,
     (performance.now() - coralIntro.startedAt) / coralIntro.duration,
   );
-  const growth = Array.from({ length: coralReef.maxCount }, (_, index) => {
-    if (index >= coralIntro.targetCount) return 0;
+  // Reuse a persistent buffer; coralReef holds the reference until the intro
+  // ends (growth: null), and we overwrite every entry each frame.
+  const growth = coralIntro.growthBuffer;
+  let visibleCount = 0;
+  for (let index = 0; index < growth.length; index += 1) {
+    if (index >= coralIntro.targetCount) {
+      growth[index] = 0;
+      continue;
+    }
 
     const orderProgress = index / Math.max(1, coralIntro.targetCount - 1);
     const local = THREE.MathUtils.clamp((progress - orderProgress * 0.58) / 0.42, 0, 1);
-    return local * local * (3 - 2 * local);
-  });
-  const visibleCount = growth.reduce((count, value) => count + (value > 0.001 ? 1 : 0), 0);
+    const value = local * local * (3 - 2 * local);
+    growth[index] = value;
+    if (value > 0.001) visibleCount += 1;
+  }
+
   coralReef.rebuild({
     count: visibleCount,
     scale: coralIntro.targetScale,
@@ -549,12 +556,6 @@ function updateCoralIntro() {
     });
     coralIntro = null;
   }
-}
-
-function splitRenderableSchools(fish) {
-  return {
-    fish,
-  };
 }
 
 function getSimulationDelta(frameDt) {

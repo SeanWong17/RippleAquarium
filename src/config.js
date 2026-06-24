@@ -38,11 +38,13 @@ export const fishConfig = {
   highlightedIndex: 0,
   bodyColor: new THREE.Color(0xf2f6ff),
   highlightedColor: new THREE.Color(0xf2f6ff),
+  // 备用纯色变体(当前模型 useAppearanceVariants=false,暂未启用)。
+  // 这些是平涂底色,并非条纹/斑纹贴图。
   appearanceVariants: [
-    new THREE.Color(0xf2f6ff), // 原始浅色
-    new THREE.Color(0xff8a2a), // 小丑鱼橙白条纹
-    new THREE.Color(0xf7efe2), // 锦鲤红白斑
-    new THREE.Color(0x8fa4ad), // 灰鱼背腹渐变
+    new THREE.Color(0xf2f6ff), // 浅冷白
+    new THREE.Color(0xff8a2a), // 暖橙
+    new THREE.Color(0xf7efe2), // 米白
+    new THREE.Color(0x8fa4ad), // 灰蓝
   ],
   renderBoundsRadius: 18,
   swimFrequencyMin: 0.9,
@@ -59,19 +61,6 @@ export const fishConfig = {
   swimAccelerationFull: 2.4,
   swimAccelerationPulseSeconds: 0.32,
   swimTurnCurveStart: 0.08,
-};
-
-export const coneConfig = {
-  count: 0,
-  radius: 0.3,
-  length: 0.8,
-  renderScale: 1,
-  radialSegments: 36,
-  heightSegments: 3,
-  bodyColor: new THREE.Color(0xf2f6ff),
-  outlineColor: new THREE.Color(0x101010),
-  outlineScale: 1.09,
-  renderBoundsRadius: 18,
 };
 
 export const simulationSettings = {

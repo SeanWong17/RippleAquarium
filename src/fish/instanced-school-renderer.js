@@ -72,10 +72,10 @@ export function disposeFishMesh(mesh) {
 
 export function updateFishInstances(mesh, fish) {
   const curveAttributes = readFishCurveAttributes(mesh.geometry);
+  const fishScale = fishConfig.renderScale * (mesh.userData.renderScale ?? 1);
 
   for (let i = 0; i < fish.length; i += 1) {
     const currentFish = fish[i];
-    const fishScale = fishConfig.renderScale * (mesh.userData.renderScale ?? 1);
     const direction = readFishDirection(currentFish, tmpDirection);
     writeFishOrientationQuaternion(currentFish, direction, tmpQuaternion);
     updateFishCurveAttributes(
