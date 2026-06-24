@@ -17,6 +17,7 @@ import {
   createFishMeshByKey,
   disposeFishMesh,
   loadFishModel,
+  setFishMeshCount,
   updateFishInstances,
 } from "./fish-renderer.js";
 import { createHeadingDebugger } from "./heading-debugger.js";
@@ -103,6 +104,8 @@ const koiControlSettings = {
 
 let fishMesh = null;
 let koiMesh = null;
+const fishCapacity = Number(controls.count.input.max) || 260;
+const koiCapacity = Number(controls.koiCount.input.max) || 120;
 let clownfishSchool = null;
 let coralReef = null;
 let coralIntro = null;
@@ -136,19 +139,27 @@ bindLanguageSwitcher();
 bindWaterPointer();
 const cameraPanel = bindCameraPanel(cameraRig);
 const modelLoading = bindModelLoading();
-try {
-  await loadFishModel();
-} finally {
-  modelLoading.finish();
-}
 simulation.reset(readControlValue("count"));
 koiSimulation.reset(readControlValue("koiCount"), 142);
+// Build meshes from the synchronous fallback model so the first frame renders
+// immediately, then hot-swap to the high-detail GLB once it streams in.
 rebuildFishMesh();
 rebuildKoiMesh();
 resize();
 window.addEventListener("resize", resize);
 renderer.setAnimationLoop(animate);
 void loadBackgroundSceneDetails();
+loadFishModel()
+  .then(() => {
+    rebuildFishMesh();
+    rebuildKoiMesh();
+  })
+  .catch((error) => {
+    console.warn("Fish model failed to load; keeping fallback.", error);
+  })
+  .finally(() => {
+    modelLoading.finish();
+  });
 
 function bindControls() {
   for (const [key, control] of Object.entries(controls)) {
@@ -169,11 +180,16 @@ async function loadBackgroundSceneDetails() {
   });
   coralReef = loadedCoralReef;
   scene.add(coralReef.group);
+  startCoralIntro();
+
+  // The clownfish use the "clown" GLB (its pattern comes from the model's own
+  // texture), so wait for the fish models before building the school — otherwise
+  // it falls back to the untextured base mesh and loses its markings.
+  await loadFishModel().catch(() => {});
   clownfishSchool = createClownfishSchool(coralReef, {
     count: readControlValue("clownfishCount"),
   });
   scene.add(clownfishSchool.mesh);
-  startCoralIntro();
 
   void loadDecorModels();
 }
@@ -454,12 +470,17 @@ function startCoralIntro() {
 
 function setFishCount(count) {
   simulation.setCount(count);
-  rebuildFishMesh();
+  setFishMeshCount(fishMesh, simulation.fish.length);
+  updateFishInstances(fishMesh, simulation.fish);
+  cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex]);
 }
 
 function setKoiCount(count) {
   koiSimulation.setCount(count);
-  rebuildKoiMesh();
+  setFishMeshCount(koiMesh, koiSimulation.fish.length);
+  if (koiMesh) {
+    updateFishInstances(koiMesh, koiSimulation.fish);
+  }
 }
 
 function rebuildFishMesh() {
@@ -468,7 +489,8 @@ function rebuildFishMesh() {
     disposeFishMesh(fishMesh);
   }
 
-  fishMesh = createFishMeshByKey(simulation.fish.length, "cartoon");
+  fishMesh = createFishMeshByKey(fishCapacity, "cartoon");
+  setFishMeshCount(fishMesh, simulation.fish.length);
   scene.add(fishMesh);
   updateFishInstances(fishMesh, simulation.fish);
   cameraRig.updateFishCamera(simulation.fish[fishConfig.highlightedIndex]);
@@ -481,13 +503,12 @@ function rebuildKoiMesh() {
     koiMesh = null;
   }
 
-  if (koiSimulation.fish.length <= 0) {
-    return;
-  }
-
-  koiMesh = createFishMeshByKey(koiSimulation.fish.length, "koi");
+  koiMesh = createFishMeshByKey(koiCapacity, "koi");
+  setFishMeshCount(koiMesh, koiSimulation.fish.length);
   scene.add(koiMesh);
-  updateFishInstances(koiMesh, koiSimulation.fish);
+  if (koiSimulation.fish.length > 0) {
+    updateFishInstances(koiMesh, koiSimulation.fish);
+  }
 }
 
 function animate() {

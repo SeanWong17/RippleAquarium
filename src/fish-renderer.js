@@ -2,6 +2,7 @@ export {
   createFishMeshByKey,
   createFishMesh,
   disposeFishMesh,
+  setFishMeshCount,
   updateFishInstances,
 } from "./fish/instanced-school-renderer.js";
 export { loadFishModel } from "./fish/model-loader.js";

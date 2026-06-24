@@ -133,12 +133,12 @@ function updateClownfish(item, coralReef, dt, time) {
   const homeY = aquariumFloorY + floorOffset + verticalRange * 0.42;
   tmpRepel.set(0, 0, 0);
 
-  for (const coral of coralReef.group.children) {
+  for (const coral of coralReef.corals) {
     if (!coral.visible) continue;
     const offset = tmpDirection.copy(item.position).sub(coral.position);
     offset.y *= 0.45;
     const distanceSq = offset.lengthSq();
-    const avoidRadius = Math.max(0.24, coral.scale.x * 0.34) + 0.56;
+    const avoidRadius = Math.max(0.24, coral.scale * 0.34) + 0.56;
     if (distanceSq > 0.0001 && distanceSq < avoidRadius * avoidRadius) {
       tmpRepel.addScaledVector(offset.normalize(), (avoidRadius * avoidRadius - distanceSq) / avoidRadius);
     }

@@ -21,6 +21,12 @@ const coralColors = [
 const addedCoralGrowthDuration = 1800;
 const coralPlacementInset = 1.35;
 
+const tmpMatrix = new THREE.Matrix4();
+const tmpQuaternion = new THREE.Quaternion();
+const tmpScale = new THREE.Vector3();
+const tmpPosition = new THREE.Vector3();
+const hiddenScale = new THREE.Vector3(0, 0, 0);
+
 export async function createCoralReef({
   count = 100,
   scale = 2,
@@ -40,6 +46,11 @@ export async function createCoralReef({
     animatedGrowth: null,
     seed,
     exclusionZones,
+    // Logical corals shared with consumers (e.g. clownfish avoidance). Each entry
+    // mirrors what a standalone Mesh used to expose: visible, world position,
+    // rendered uniform scale.
+    corals: [],
+    meshes: [],
     rebuild(nextSettings = {}) {
       const previousCount = getTargetCount(reef);
       const previousGrowth = Array.isArray(reef.animatedGrowth)
@@ -60,10 +71,11 @@ export async function createCoralReef({
     },
     dispose() {
       group.clear();
-      for (const model of models) {
-        model.geometry.dispose();
-        model.material.dispose();
+      for (const mesh of reef.meshes) {
+        mesh.geometry.dispose();
+        mesh.material.dispose();
       }
+      reef.meshes.length = 0;
     },
   };
 
@@ -119,24 +131,50 @@ function normalizeCoralGeometry(sourceGeometry) {
 
 function buildCoralPool(reef, models) {
   const random = mulberry32(reef.seed);
-
+  // One InstancedMesh per coral model. Corals are assigned round-robin by model,
+  // so per-model instance counts are tracked first, then meshes are allocated.
+  const perModelCounts = new Array(models.length).fill(0);
   for (let i = 0; i < reef.maxCount; i += 1) {
-    const model = models[i % models.length];
-    const coral = new THREE.Mesh(model.geometry, model.material);
+    perModelCounts[i % models.length] += 1;
+  }
+
+  reef.meshes = models.map((model, modelIndex) => {
+    const mesh = new THREE.InstancedMesh(
+      model.geometry,
+      model.material,
+      Math.max(1, perModelCounts[modelIndex]),
+    );
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.count = perModelCounts[modelIndex];
+    reef.group.add(mesh);
+    return mesh;
+  });
+
+  const nextInstanceIndex = new Array(models.length).fill(0);
+  reef.corals = [];
+  for (let i = 0; i < reef.maxCount; i += 1) {
+    const modelIndex = i % models.length;
+    const instanceIndex = nextInstanceIndex[modelIndex];
+    nextInstanceIndex[modelIndex] += 1;
+
     const position = sampleCoralPosition(random, reef.exclusionZones);
     const baseScale = THREE.MathUtils.lerp(0.38, 0.95, random());
 
-    coral.position.set(position.x, aquariumFloorY + 0.015, position.z);
-    coral.userData.baseY = coral.position.y;
-    coral.userData.baseRotationY = random() * Math.PI * 2;
-    coral.rotation.y = coral.userData.baseRotationY;
-    coral.userData.baseScale = baseScale;
-    coral.userData.growth = i < reef.count ? 1 : 0;
-    coral.userData.growthStartedAt = 0;
-    coral.userData.growing = false;
-    coral.castShadow = true;
-    coral.receiveShadow = true;
-    reef.group.add(coral);
+    reef.corals.push({
+      modelIndex,
+      instanceIndex,
+      visible: i < reef.count,
+      position: new THREE.Vector3(position.x, aquariumFloorY + 0.015, position.z),
+      scale: 0,
+      baseY: aquariumFloorY + 0.015,
+      baseRotationY: random() * Math.PI * 2,
+      baseScale,
+      growth: i < reef.count ? 1 : 0,
+      growthStartedAt: 0,
+      growing: false,
+    });
   }
 }
 
@@ -211,31 +249,30 @@ function prepareCoralGrowth(reef, previousCount, previousGrowth = null) {
   const targetCount = getTargetCount(reef);
   const now = performance.now();
 
-  for (let i = 0; i < reef.group.children.length; i += 1) {
-    const coral = reef.group.children[i];
+  for (let i = 0; i < reef.corals.length; i += 1) {
+    const coral = reef.corals[i];
     if (i >= targetCount) {
-      coral.userData.growth = 0;
-      coral.userData.growing = false;
+      coral.growth = 0;
+      coral.growing = false;
       continue;
     }
 
     if (i >= previousCount) {
-      coral.userData.growth = 0;
-      coral.userData.growthStartedAt = now;
-      coral.userData.growing = true;
+      coral.growth = 0;
+      coral.growthStartedAt = now;
+      coral.growing = true;
       continue;
     }
 
     if (previousGrowth) {
-      coral.userData.growth = previousGrowth[i] ?? coral.userData.growth;
-      coral.userData.growthStartedAt =
-        now - coral.userData.growth * addedCoralGrowthDuration;
-      coral.userData.growing = coral.userData.growth < 1;
+      coral.growth = previousGrowth[i] ?? coral.growth;
+      coral.growthStartedAt = now - coral.growth * addedCoralGrowthDuration;
+      coral.growing = coral.growth < 1;
       continue;
     }
 
-    if (!coral.userData.growing && coral.userData.growth <= 0.001) {
-      coral.userData.growth = 1;
+    if (!coral.growing && coral.growth <= 0.001) {
+      coral.growth = 1;
     }
   }
 }
@@ -243,20 +280,20 @@ function prepareCoralGrowth(reef, previousCount, previousGrowth = null) {
 function updateCoralGrowth(reef, now) {
   let changed = false;
 
-  for (const coral of reef.group.children) {
-    if (!coral.userData.growing) continue;
+  for (const coral of reef.corals) {
+    if (!coral.growing) continue;
 
     const progress = THREE.MathUtils.clamp(
-      (now - coral.userData.growthStartedAt) / addedCoralGrowthDuration,
+      (now - coral.growthStartedAt) / addedCoralGrowthDuration,
       0,
       1,
     );
-    coral.userData.growth = progress * progress * (3 - 2 * progress);
+    coral.growth = progress * progress * (3 - 2 * progress);
     changed = true;
 
     if (progress >= 1) {
-      coral.userData.growth = 1;
-      coral.userData.growing = false;
+      coral.growth = 1;
+      coral.growing = false;
     }
   }
 
@@ -265,12 +302,46 @@ function updateCoralGrowth(reef, now) {
 
 function syncCorals(reef) {
   const targetCount = getTargetCount(reef);
-  for (let i = 0; i < reef.group.children.length; i += 1) {
-    const coral = reef.group.children[i];
-    coral.visible = i < targetCount;
-    const growth = reef.animatedGrowth?.[i] ?? coral.userData.growth ?? 1;
-    coral.scale.setScalar(coral.userData.baseScale * reef.scale * growth);
-    coral.position.y = coral.userData.baseY - (1 - growth) * 0.18;
-    coral.rotation.y = coral.userData.baseRotationY + (1 - growth) * 0.22;
+  for (let i = 0; i < reef.corals.length; i += 1) {
+    const coral = reef.corals[i];
+    const visible = i < targetCount;
+    coral.visible = visible;
+
+    const mesh = reef.meshes[coral.modelIndex];
+    if (!visible) {
+      coral.scale = 0;
+      tmpMatrix.compose(coral.position, identityQuaternion(), hiddenScale);
+      mesh.setMatrixAt(coral.instanceIndex, tmpMatrix);
+      continue;
+    }
+
+    const growth = reef.animatedGrowth?.[i] ?? coral.growth ?? 1;
+    const renderScale = coral.baseScale * reef.scale * growth;
+    coral.scale = renderScale;
+
+    tmpPosition.set(
+      coral.position.x,
+      coral.baseY - (1 - growth) * 0.18,
+      coral.position.z,
+    );
+    coral.position.y = tmpPosition.y;
+    tmpQuaternion.setFromAxisAngle(
+      Y_AXIS,
+      coral.baseRotationY + (1 - growth) * 0.22,
+    );
+    tmpScale.setScalar(renderScale);
+    tmpMatrix.compose(tmpPosition, tmpQuaternion, tmpScale);
+    mesh.setMatrixAt(coral.instanceIndex, tmpMatrix);
   }
+
+  for (const mesh of reef.meshes) {
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const reusableIdentityQuaternion = new THREE.Quaternion();
+
+function identityQuaternion() {
+  return reusableIdentityQuaternion.identity();
 }

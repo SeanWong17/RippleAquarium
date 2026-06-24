@@ -23,21 +23,31 @@ const tmpQuaternion = new THREE.Quaternion();
 const tmpMatrix = new THREE.Matrix4();
 const tmpScale = new THREE.Vector3();
 
-export function createFishMesh(count, variantIndex = 0) {
+export function createFishMesh(capacity, variantIndex = 0) {
   const { geometry, material, useAppearanceVariants, renderScale } = createFishModelInstance(variantIndex);
-  return createFishMeshFromModel(count, geometry, material, useAppearanceVariants, renderScale);
+  return createFishMeshFromModel(capacity, geometry, material, useAppearanceVariants, renderScale);
 }
 
-export function createFishMeshByKey(count, modelKey) {
+export function createFishMeshByKey(capacity, modelKey) {
   const { geometry, material, useAppearanceVariants, renderScale } = createFishModelInstanceByKey(modelKey);
-  return createFishMeshFromModel(count, geometry, material, useAppearanceVariants, renderScale);
+  return createFishMeshFromModel(capacity, geometry, material, useAppearanceVariants, renderScale);
 }
 
-function createFishMeshFromModel(count, geometry, material, useAppearanceVariants, renderScale = 1) {
-  addFishCurveAttributes(geometry, count);
+// Resize the visible instance count without touching geometry/material. The mesh
+// is allocated once at capacity, so this is a cheap field write — no GPU realloc
+// or shader recompile, unlike disposing and rebuilding the mesh.
+export function setFishMeshCount(mesh, count) {
+  if (!mesh) return;
+  mesh.count = Math.max(0, Math.min(count, mesh.userData.capacity ?? count));
+}
+
+function createFishMeshFromModel(capacity, geometry, material, useAppearanceVariants, renderScale = 1) {
+  addFishCurveAttributes(geometry, capacity);
   enableFishCurveDeformation(material);
 
-  const mesh = new THREE.InstancedMesh(geometry, material, count);
+  const count = capacity;
+  const mesh = new THREE.InstancedMesh(geometry, material, capacity);
+  mesh.userData.capacity = capacity;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.boundingSphere = new THREE.Sphere(
     new THREE.Vector3(),
