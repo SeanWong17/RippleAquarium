@@ -286,30 +286,34 @@ function syncControlsToggle() {
 }
 
 function bindWaterPointer() {
-  canvas.addEventListener("pointerdown", (event) => {
+  canvas.addEventListener("mousedown", (event) => {
     if (event.target !== canvas) return;
+    if (event.button !== 0) return;
 
     const point = getWaterIntersection(event);
     if (!point) return;
 
+    event.preventDefault();
     aquariumEffects.waterSurface.queueImpact(point);
     waterPointer.previousPoint = point.clone();
   });
 
-  canvas.addEventListener("pointermove", (event) => {
+  canvas.addEventListener("mousemove", (event) => {
     if ((event.buttons & 1) === 0 || !waterPointer.previousPoint) return;
 
     const point = getWaterIntersection(event);
     if (!point) return;
 
+    event.preventDefault();
     aquariumEffects.waterSurface.queueImpact(waterPointer.previousPoint, point);
     waterPointer.previousPoint.copy(point);
   });
 
-  window.addEventListener("pointerup", () => {
+  window.addEventListener("mouseup", () => {
     waterPointer.previousPoint = null;
   });
-  window.addEventListener("pointercancel", () => {
+
+  canvas.addEventListener("mouseleave", () => {
     waterPointer.previousPoint = null;
   });
 }

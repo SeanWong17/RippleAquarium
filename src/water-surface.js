@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { aquariumSize, waterLevelY } from "./config.js";
 
-const SIM_SIZE = 256;
+const SIM_SIZE = 384;
 const MAX_IMPACTS = 24;
 
 const quadVertexShader = `
@@ -48,7 +48,7 @@ void main() {
   float upRight = texture2D(uPrevious, vUv + vec2(uTexel.x, uTexel.y)).r;
   float downLeft = texture2D(uPrevious, vUv + vec2(-uTexel.x, -uTexel.y)).r;
   float downRight = texture2D(uPrevious, vUv + vec2(uTexel.x, -uTexel.y)).r;
-  float lap = (4.0 * (left + right + up + down) + upLeft + upRight + downLeft + downRight - 20.0 * c) / 6.0;
+  float lap = 0.2 * (left + right + up + down) + 0.05 * (upLeft + upRight + downLeft + downRight) - c;
 
   float next = 2.0 * c - old + uWaveSpeed * lap;
   float amp = abs(next);
@@ -62,16 +62,18 @@ void main() {
     vec2 b = impact.zw;
     float distanceToPath = sdSegment(p, a, b);
     float travel = length(b - a);
-    float strength = uForce * smoothstep(0.0, 0.08, travel);
-    next += strength * exp(-(distanceToPath * distanceToPath) / (uRadius * uRadius));
+    float source = smoothstep(uRadius, 0.0, distanceToPath);
+    float falloff = exp(-(distanceToPath * distanceToPath) / max(uRadius * uRadius, 0.0001));
+    float strength = uForce * mix(0.42, 1.0, smoothstep(0.0, 0.16, travel));
+    next += strength * mix(source, falloff, 0.28);
   }
 
-  float deadzone = 0.0018;
-  next *= smoothstep(deadzone, deadzone * 2.4, abs(next));
+  float deadzone = 0.0032;
+  next *= smoothstep(deadzone, deadzone * 2.2, abs(next));
   vec2 edge = min(vUv, 1.0 - vUv);
-  float edgeMask = smoothstep(0.0, 0.045, min(edge.x, edge.y));
-  next *= mix(0.86, 1.0, edgeMask);
-  next = clamp(next, -2.5, 2.5);
+  float edgeMask = smoothstep(0.0, 0.05, min(edge.x, edge.y));
+  next *= mix(0.90, 1.0, edgeMask);
+  next = clamp(next, -1.5, 1.5);
 
   gl_FragColor = vec4(next, c, 0.0, 1.0);
 }
@@ -97,7 +99,8 @@ void main() {
   transformed.z += h * uDisplacement;
 
   vHeight = h;
-  vNormal = normalize(normalMatrix * vec3(-(right - left) * 4.0, -(up - down) * 4.0, 1.0));
+  vec3 localNormal = normalize(vec3(-(right - left) * 7.0, -(up - down) * 7.0, 1.0));
+  vNormal = normalize((modelMatrix * vec4(localNormal, 0.0)).xyz);
   vec4 worldPosition = modelMatrix * vec4(transformed, 1.0);
   vWorldPosition = worldPosition.xyz;
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
@@ -109,6 +112,8 @@ precision highp float;
 
 uniform vec3 uBaseColor;
 uniform vec3 uHighlightColor;
+uniform sampler2D uHeight;
+uniform vec2 uTexel;
 uniform float uTime;
 varying vec2 vUv;
 varying float vHeight;
@@ -119,18 +124,40 @@ void main() {
   vec3 normal = normalize(vNormal);
   vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
   vec3 lightDirection = normalize(vec3(0.35, 0.85, 0.42));
+  vec3 fillLight = normalize(vec3(-0.55, 0.36, 0.72));
   float fresnel = pow(1.0 - clamp(dot(normal, viewDirection), 0.0, 1.0), 3.0);
-  float specular = pow(max(dot(reflect(-lightDirection, normal), viewDirection), 0.0), 80.0);
-  float wave = smoothstep(0.0, 0.05, abs(vHeight));
-  float shimmer = sin((vUv.x * 18.0 + vUv.y * 13.0) + uTime * 1.6) * 0.025;
+  float sharpSpecular = pow(max(dot(reflect(-lightDirection, normal), viewDirection), 0.0), 96.0);
+  float broadSheen = pow(max(dot(reflect(-fillLight, normal), viewDirection), 0.0), 14.0);
 
-  vec3 color = mix(uBaseColor, uHighlightColor, wave);
-  color += vec3(0.18, 0.32, 0.42) * fresnel;
-  color += vec3(0.95, 1.0, 0.92) * specular * (0.35 + wave);
-  color += shimmer;
+  float hCenter = texture2D(uHeight, vUv).r;
+  float hLeft = texture2D(uHeight, vUv - vec2(uTexel.x, 0.0)).r;
+  float hRight = texture2D(uHeight, vUv + vec2(uTexel.x, 0.0)).r;
+  float hDown = texture2D(uHeight, vUv - vec2(0.0, uTexel.y)).r;
+  float hUp = texture2D(uHeight, vUv + vec2(0.0, uTexel.y)).r;
+  vec2 grad = vec2(hRight - hLeft, hUp - hDown);
+  float curvature = abs(hLeft + hRight + hUp + hDown - 4.0 * hCenter);
+  float crest = clamp(hCenter * 1.25, -1.0, 1.0);
+  float wave = clamp(
+    smoothstep(0.006, 0.055, abs(hCenter)) +
+    smoothstep(0.004, 0.035, curvature) * 0.72 +
+    smoothstep(0.012, 0.09, length(grad)) * 0.45,
+    0.0,
+    1.0
+  );
+  float shimmer = sin((vUv.x * 26.0 + vUv.y * 19.0) + uTime * 1.7) * 0.012;
 
-  float alpha = mix(0.34, 0.58, clamp(wave + fresnel * 0.65, 0.0, 1.0));
-  gl_FragColor = vec4(color, alpha);
+  vec3 warmCrest = vec3(1.04, 1.0, 0.94);
+  vec3 coolTrough = vec3(0.76, 0.92, 1.08);
+  vec3 waterTint = mix(coolTrough, warmCrest, crest * 0.5 + 0.5);
+  vec3 color = mix(uBaseColor, uHighlightColor, wave * 0.58);
+  color *= mix(vec3(1.0), waterTint, 0.32);
+  color += vec3(0.18, 0.32, 0.42) * fresnel * 0.8;
+  color += vec3(0.96, 1.0, 0.92) * sharpSpecular * (0.42 + wave * 0.8);
+  color += vec3(0.72, 0.9, 1.0) * broadSheen * 0.18;
+  color += shimmer * (0.25 + wave);
+
+  float alpha = 0.12 + fresnel * 0.18 + wave * 0.28 + sharpSpecular * 0.16;
+  gl_FragColor = vec4(color, clamp(alpha, 0.10, 0.52));
 }
 `;
 
@@ -173,8 +200,8 @@ export function createWaterSurface(renderer) {
       uWorldSize: { value: new THREE.Vector2(aquariumSize.x, aquariumSize.z) },
       uImpacts: { value: impacts },
       uImpactCount: { value: 0 },
-      uWaveSpeed: { value: 0.31 },
-      uDampSmall: { value: 0.875 },
+      uWaveSpeed: { value: 1.68 },
+      uDampSmall: { value: 0.90 },
       uDampLarge: { value: 0.94 },
       uAmpThresh: { value: 0.12 },
       uRadius: { value: 0.42 },
@@ -193,7 +220,7 @@ export function createWaterSurface(renderer) {
       uHeight: { value: readTarget.texture },
       uTexel: { value: new THREE.Vector2(1 / SIM_SIZE, 1 / SIM_SIZE) },
       uDisplacement: { value: 0.34 },
-      uBaseColor: { value: new THREE.Color(0x1c8fb3) },
+      uBaseColor: { value: new THREE.Color(0x126d8c) },
       uHighlightColor: { value: new THREE.Color(0xd8fbff) },
       uTime: { value: 0 },
     },
