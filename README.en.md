@@ -6,7 +6,7 @@
 
 # 🐠 Ripple Aquarium
 
-**Interactive Three.js aquarium with boids, water ripples, and coral growth**
+**A pure front-end WebGL aquarium · boids fish schools + real-time water ripples**
 
 <p>
   <a href="https://www.gnu.org/licenses/agpl-3.0.html">
@@ -39,9 +39,9 @@
 
 ## 📋 Introduction
 
-**Ripple Aquarium** is an interactive browser-based 3D aquarium built with Three.js.
+**Ripple Aquarium** is a 3D aquarium that runs in real time in your browser — nothing to install, just open the page and play.
 
-It combines boids-style fish movement, height-field water ripples, coral growth animation, multiple fish appearances, and a collapsible tuning panel. When the page opens or refreshes, the coral reef grows from zero; fish swim continuously inside the tank; and both fish near the surface and mouse interactions can trigger visible ripples.
+A whole tank of fish swims on its own using boids flocking: they gather, turn, and steer around each other. When a fish nears the surface, or you click and drag on the water, real ripples spread out across it. Meanwhile the coral grows from nothing into a full reef as the page loads. Every effect is computed frame by frame in WebGL, making a small world that runs itself rather than a pre-recorded clip.
 
 ---
 
