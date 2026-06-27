@@ -31,7 +31,7 @@
   注：在线演示会直接加载默认鱼缸场景，支持鼠标点击/拖动水面触发涟漪。
 </p>
 
-<img src="assets/demo.gif" alt="涟漪鱼缸演示" width="80%">
+<img src="assets/demo.webp" alt="涟漪鱼缸演示" width="80%">
 
 </div>
 

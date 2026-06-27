@@ -31,7 +31,7 @@
   The demo loads the default aquarium scene. Click or drag on the water surface to create ripples.
 </p>
 
-<img src="assets/demo.gif" alt="Ripple Aquarium demo" width="80%">
+<img src="assets/demo.webp" alt="Ripple Aquarium demo" width="80%">
 
 </div>
 
