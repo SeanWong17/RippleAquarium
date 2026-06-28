@@ -1,8 +1,32 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { fishConfig } from "./config.js";
+import type { GLTF } from "three/addons/loaders/GLTFLoader.js";
+import type { FishModelInstance } from "../types.js";
 
-const fishModelSources = [
+interface FishModelSource {
+  key: string;
+  url: URL;
+  useAppearanceVariants: boolean;
+  axes: THREE.Matrix4;
+  bakeWorldMatrix?: boolean;
+}
+
+interface FishModel {
+  key: string;
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+  useAppearanceVariants: boolean;
+  appearanceMode?: "mixed" | "koi";
+  renderScale?: number;
+}
+
+interface CloneMaterialOptions {
+  appearanceVariants?: boolean;
+  appearanceMode?: "mixed" | "koi";
+}
+
+const fishModelSources: FishModelSource[] = [
   {
     key: "cartoon",
     url: new URL("./cartoon.glb", import.meta.url),
@@ -55,10 +79,10 @@ const tmpBox = new THREE.Box3();
 const tmpCenter = new THREE.Vector3();
 const tmpSize = new THREE.Vector3();
 
-let fishModels = [createFallbackFishModel()];
-let fishModelLoadPromise = null;
+let fishModels: FishModel[] = [createFallbackFishModel()];
+let fishModelLoadPromise: Promise<FishModel[]> | null = null;
 
-export async function loadFishModel() {
+export async function loadFishModel(): Promise<FishModel[]> {
   if (fishModelLoadPromise) {
     return fishModelLoadPromise;
   }
@@ -68,7 +92,7 @@ export async function loadFishModel() {
     fishModelSources.map((source) => loader.loadAsync(source.url.href)),
   )
     .then((results) => {
-      const loaded = [];
+      const loaded: FishModel[] = [];
       for (let i = 0; i < results.length; i += 1) {
         const source = fishModelSources[i];
         const result = results[i];
@@ -89,17 +113,17 @@ export async function loadFishModel() {
   return fishModelLoadPromise;
 }
 
-export function createFishModelInstance(variantIndex = 0) {
+export function createFishModelInstance(variantIndex = 0): FishModelInstance {
   const fishModel = fishModels[variantIndex % fishModels.length] ?? fishModels[0];
   return createFishModelInstanceFromModel(fishModel);
 }
 
-export function createFishModelInstanceByKey(key) {
+export function createFishModelInstanceByKey(key: string): FishModelInstance {
   const fishModel = fishModels.find((model) => model.key === key) ?? fishModels[0];
   return createFishModelInstanceFromModel(fishModel);
 }
 
-function createFishModelInstanceFromModel(fishModel) {
+function createFishModelInstanceFromModel(fishModel: FishModel): FishModelInstance {
   return {
     geometry: fishModel.geometry.clone(),
     material: cloneFishMaterial(fishModel.material, {
@@ -111,7 +135,10 @@ function createFishModelInstanceFromModel(fishModel) {
   };
 }
 
-export function cloneFishMaterial(material, options = {}) {
+export function cloneFishMaterial(
+  material: THREE.Material | THREE.Material[],
+  options: CloneMaterialOptions = {},
+): THREE.Material {
   const source = Array.isArray(material) ? material[0] : material;
   const cloned = source?.clone?.() ?? createFallbackFishMaterial();
   if ("roughness" in cloned) {
@@ -134,14 +161,20 @@ export function cloneFishMaterial(material, options = {}) {
   return cloned;
 }
 
-export function disposeFishMaterial(material) {
+export function disposeFishMaterial(material: THREE.Material | null | undefined): void {
   if (!material) return;
 
-  material.gradientMap?.dispose();
+  if ("gradientMap" in material) {
+    const gradientMap = material.gradientMap as THREE.Texture | null | undefined;
+    gradientMap?.dispose();
+  }
   material.dispose();
 }
 
-function enableFishAppearanceVariants(material, appearanceMode = "mixed") {
+function enableFishAppearanceVariants(
+  material: THREE.Material,
+  appearanceMode: "mixed" | "koi" = "mixed",
+): void {
   const previousOnBeforeCompile = material.onBeforeCompile;
 
   material.customProgramCacheKey = () => `fish-appearance-${appearanceMode}`;
@@ -230,7 +263,7 @@ vec3 readFishAppearanceColor(vec3 baseColor, vec3 localPosition) {
   };
 }
 
-function createFishModelFromGltf(gltf, source) {
+function createFishModelFromGltf(gltf: GLTF, source: FishModelSource): FishModel {
   gltf.scene.updateWorldMatrix(true, true);
   const sourceMesh = findPrimaryMesh(gltf.scene);
   if (!sourceMesh) {
@@ -245,7 +278,7 @@ function createFishModelFromGltf(gltf, source) {
   };
 }
 
-function createKoiModelFromBase(baseModel) {
+function createKoiModelFromBase(baseModel: FishModel): FishModel {
   const geometry = createKoiGeometry(baseModel.geometry);
   return {
     key: "koi",
@@ -256,7 +289,7 @@ function createKoiModelFromBase(baseModel) {
   };
 }
 
-function createKoiGeometry(sourceGeometry) {
+function createKoiGeometry(sourceGeometry: THREE.BufferGeometry): THREE.BufferGeometry {
   const geometry = sourceGeometry.clone();
   const position = geometry.getAttribute("position");
   const colors = new Float32Array(position.count * 3);
@@ -311,25 +344,25 @@ function createKoiGeometry(sourceGeometry) {
   return geometry;
 }
 
-function createKoiMaterial(baseMaterial) {
-  const material = cloneFishMaterial(baseMaterial);
+function createKoiMaterial(baseMaterial: THREE.Material): THREE.Material {
+  const material = cloneFishMaterial(baseMaterial) as THREE.MeshStandardMaterial;
   material.vertexColors = true;
   material.needsUpdate = true;
   return material;
 }
 
-function smoothPatch(x, y, centerX, centerY, radius) {
+function smoothPatch(x: number, y: number, centerX: number, centerY: number, radius: number): number {
   const distance = Math.hypot(x - centerX, y - centerY);
   return 1 - THREE.MathUtils.smoothstep(distance, radius * 0.58, radius);
 }
 
-function findPrimaryMesh(root) {
-  let result = null;
+function findPrimaryMesh(root: THREE.Object3D): THREE.Mesh | null {
+  let result: THREE.Mesh | null = null;
   let resultDistanceSq = Infinity;
   const worldPosition = new THREE.Vector3();
 
   root.traverse((object) => {
-    if (!object.isMesh || !object.geometry) {
+    if (!(object instanceof THREE.Mesh) || !object.geometry) {
       return;
     }
 
@@ -343,7 +376,7 @@ function findPrimaryMesh(root) {
   return result;
 }
 
-function createFishGeometry(sourceMesh, source) {
+function createFishGeometry(sourceMesh: THREE.Mesh, source: FishModelSource): THREE.BufferGeometry {
   const geometry = sourceMesh.geometry.clone();
 
   if (source.bakeWorldMatrix) {
@@ -370,14 +403,16 @@ function createFishGeometry(sourceMesh, source) {
   return geometry;
 }
 
-function createFallbackFishModel() {
+function createFallbackFishModel(): FishModel {
   return {
+    key: "fallback",
     geometry: createFallbackFishGeometry(),
     material: createFallbackFishMaterial(),
+    useAppearanceVariants: true,
   };
 }
 
-function createFallbackFishMaterial() {
+function createFallbackFishMaterial(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.9,
@@ -387,7 +422,7 @@ function createFallbackFishMaterial() {
   });
 }
 
-function createFallbackFishGeometry() {
+function createFallbackFishGeometry(): THREE.BufferGeometry {
   const radialSegments = Math.max(8, Math.floor(fishConfig.radialSegments ?? 18));
   const length = fishConfig.length;
   const radius = fishConfig.radius;
@@ -398,8 +433,8 @@ function createFallbackFishGeometry() {
     { y: -length * 0.26, rx: radius * 0.5, rz: radius * 0.38 },
     { y: -length * 0.39, rx: radius * 0.16, rz: radius * 0.12 },
   ];
-  const positions = [];
-  const indices = [];
+  const positions: number[] = [];
+  const indices: number[] = [];
 
   for (const ring of rings) {
     for (let i = 0; i < radialSegments; i += 1) {

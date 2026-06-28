@@ -50,7 +50,7 @@ function normalizeLoadedHouse(house, settings) {
     settings.position.z - scaledCenter.z,
   );
   house.traverse((object) => {
-    if (object.isMesh) {
+    if (object instanceof THREE.Mesh) {
       object.castShadow = true;
       object.receiveShadow = true;
       prepareLoadedMaterial(object.material);
@@ -88,7 +88,7 @@ function createFallbackPineappleHouseDecor(settings = pineappleHouseDecor) {
 
   group.add(body, leaves, door, windows, stones);
   group.traverse((object) => {
-    if (object.isMesh) {
+    if (object instanceof THREE.Mesh) {
       object.castShadow = true;
       object.receiveShadow = true;
     }

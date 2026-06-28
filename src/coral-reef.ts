@@ -2,6 +2,53 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { aquariumFloorY, aquariumHalfSize } from "./config.js";
 import { mulberry32 } from "./random.js";
+import type { ExclusionZone, RandomSource } from "./types.js";
+
+interface CoralModel {
+  geometry: THREE.BufferGeometry;
+  material: THREE.MeshStandardMaterial;
+}
+
+interface CoralState {
+  modelIndex: number;
+  instanceIndex: number;
+  visible: boolean;
+  position: THREE.Vector3;
+  scale: number;
+  baseY: number;
+  baseRotationY: number;
+  baseScale: number;
+  growth: number;
+  growthStartedAt: number;
+  growing: boolean;
+}
+
+interface CoralReefSettings {
+  count?: number;
+  scale?: number;
+  maxCount?: number;
+  seed?: number;
+  exclusionZones?: ExclusionZone[];
+}
+
+type CoralRebuildSettings = Partial<Pick<CoralReef, "count" | "scale">> & {
+  growth?: number[] | null;
+};
+
+export interface CoralReef {
+  group: THREE.Group;
+  count: number;
+  scale: number;
+  maxCount: number;
+  animatedGrowth: number[] | null;
+  seed: number;
+  exclusionZones: ExclusionZone[];
+  corals: CoralState[];
+  meshes: THREE.InstancedMesh[];
+  rebuild(nextSettings?: CoralRebuildSettings): void;
+  update(now?: number): void;
+  dispose(): void;
+}
 
 const coralUrls = Array.from(
   { length: 7 },
@@ -33,12 +80,12 @@ export async function createCoralReef({
   maxCount = 200,
   seed = 73,
   exclusionZones = [],
-} = {}) {
+}: CoralReefSettings = {}): Promise<CoralReef> {
   const models = await loadCoralModels();
   const group = new THREE.Group();
   group.name = "Coral reef";
 
-  const reef = {
+  const reef: CoralReef = {
     group,
     count,
     scale,
@@ -73,7 +120,10 @@ export async function createCoralReef({
       group.clear();
       for (const mesh of reef.meshes) {
         mesh.geometry.dispose();
-        mesh.material.dispose();
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const material of materials) {
+          material.dispose();
+        }
       }
       reef.meshes.length = 0;
     },
@@ -101,17 +151,17 @@ async function loadCoralModels() {
   });
 }
 
-function findPrimaryMesh(root) {
-  let result = null;
+function findPrimaryMesh(root: THREE.Object3D): THREE.Mesh | null {
+  let result: THREE.Mesh | null = null;
   root.traverse((object) => {
-    if (object.isMesh && object.geometry && !result) {
+    if (object instanceof THREE.Mesh && object.geometry && !result) {
       result = object;
     }
   });
   return result;
 }
 
-function normalizeCoralGeometry(sourceGeometry) {
+function normalizeCoralGeometry(sourceGeometry: THREE.BufferGeometry): THREE.BufferGeometry {
   const geometry = sourceGeometry.clone();
   geometry.computeBoundingBox();
   const box = geometry.boundingBox;
@@ -129,7 +179,7 @@ function normalizeCoralGeometry(sourceGeometry) {
   return geometry;
 }
 
-function buildCoralPool(reef, models) {
+function buildCoralPool(reef: CoralReef, models: CoralModel[]): void {
   const random = mulberry32(reef.seed);
   // One InstancedMesh per coral model. Corals are assigned round-robin by model,
   // so per-model instance counts are tracked first, then meshes are allocated.
@@ -178,7 +228,7 @@ function buildCoralPool(reef, models) {
   }
 }
 
-function sampleCoralPosition(random, exclusionZones) {
+function sampleCoralPosition(random: RandomSource, exclusionZones: ExclusionZone[]) {
   const fallback = { x: 0, z: 0 };
 
   for (let attempt = 0; attempt < 32; attempt += 1) {
@@ -205,11 +255,11 @@ function sampleCoralPosition(random, exclusionZones) {
   return fallback;
 }
 
-function randomSignedRange(random, halfRange) {
+function randomSignedRange(random: RandomSource, halfRange: number): number {
   return (random() * 2 - 1) * halfRange;
 }
 
-function isInExclusionZone(position, exclusionZones) {
+function isInExclusionZone(position: { x: number; z: number }, exclusionZones: ExclusionZone[]): boolean {
   for (const zone of exclusionZones) {
     if (zone.shape === "box" && isInBoxExclusionZone(position, zone)) {
       return true;
@@ -223,8 +273,8 @@ function isInExclusionZone(position, exclusionZones) {
   return false;
 }
 
-function isInCircleExclusionZone(position, zone) {
-  const radius = zone.radius ?? 0;
+function isInCircleExclusionZone(position: { x: number; z: number }, zone: ExclusionZone): boolean {
+  const radius = "radius" in zone ? zone.radius : 0;
   if (radius <= 0) return false;
 
   const dx = position.x - zone.position.x;
@@ -232,7 +282,7 @@ function isInCircleExclusionZone(position, zone) {
   return dx * dx + dz * dz < radius * radius;
 }
 
-function isInBoxExclusionZone(position, zone) {
+function isInBoxExclusionZone(position: { x: number; z: number }, zone: Extract<ExclusionZone, { shape: "box" }>): boolean {
   const halfX = zone.size.x * 0.5;
   const halfZ = zone.size.y * 0.5;
   const dx = Math.abs(position.x - zone.position.x);
@@ -241,11 +291,15 @@ function isInBoxExclusionZone(position, zone) {
   return dx < halfX && dz < halfZ;
 }
 
-function getTargetCount(reef) {
+function getTargetCount(reef: CoralReef): number {
   return Math.max(0, Math.min(reef.maxCount, Math.floor(reef.count)));
 }
 
-function prepareCoralGrowth(reef, previousCount, previousGrowth = null) {
+function prepareCoralGrowth(
+  reef: CoralReef,
+  previousCount: number,
+  previousGrowth: number[] | null = null,
+): void {
   const targetCount = getTargetCount(reef);
   const now = performance.now();
 
@@ -277,7 +331,7 @@ function prepareCoralGrowth(reef, previousCount, previousGrowth = null) {
   }
 }
 
-function updateCoralGrowth(reef, now) {
+function updateCoralGrowth(reef: CoralReef, now: number): boolean {
   let changed = false;
 
   for (const coral of reef.corals) {
@@ -300,7 +354,7 @@ function updateCoralGrowth(reef, now) {
   return changed;
 }
 
-function syncCorals(reef) {
+function syncCorals(reef: CoralReef): void {
   const targetCount = getTargetCount(reef);
   for (let i = 0; i < reef.corals.length; i += 1) {
     const coral = reef.corals[i];

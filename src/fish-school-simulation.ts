@@ -11,9 +11,58 @@ import {
   randomPointInAquarium,
   randomPointInSphere,
 } from "./random.js";
+import type {
+  FishMotionScratch,
+  FishSimulationTrace,
+  FishState,
+  Obstacle,
+  RandomSource,
+  SimulationSettings,
+} from "./types.js";
+
+interface FishSchoolSimulationOptions {
+  aquariumHalfSize: THREE.Vector3;
+  obstacles: Obstacle[];
+  settings: SimulationSettings;
+}
+
+interface UpdateOptions {
+  traceIndex?: number;
+}
 
 export class FishSchoolSimulation {
-  constructor({ aquariumHalfSize, obstacles, settings }) {
+  aquariumHalfSize: THREE.Vector3;
+  obstacles: Obstacle[];
+  settings: SimulationSettings;
+  fish: FishState[];
+  random: RandomSource;
+  rayDirections: THREE.Vector3[];
+  fishMotionScratch: FishMotionScratch;
+  grid: SpatialGrid<FishState>;
+  nextVelocities: THREE.Vector3[];
+  nextPositions: THREE.Vector3[];
+  tmpOffset: THREE.Vector3;
+  tmpNeighborDir: THREE.Vector3;
+  tmpAvoid: THREE.Vector3;
+  tmpForward: THREE.Vector3;
+  tmpDesired: THREE.Vector3;
+  accel: THREE.Vector3;
+  headingSum: THREE.Vector3;
+  centerSum: THREE.Vector3;
+  avoidanceSum: THREE.Vector3;
+  steerOut: THREE.Vector3;
+  boundaryOut: THREE.Vector3;
+  clearDirOut: THREE.Vector3;
+  tmpRayDir: THREE.Vector3;
+  tmpRayEnd: THREE.Vector3;
+  tmpRayLocalOrigin: THREE.Vector3;
+  tmpRayLocalDir: THREE.Vector3;
+  tmpTurnCurrent: THREE.Vector3;
+  tmpTurnDesired: THREE.Vector3;
+  tmpQuat: THREE.Quaternion;
+  forwardAxis: THREE.Vector3;
+
+  constructor({ aquariumHalfSize, obstacles, settings }: FishSchoolSimulationOptions) {
     this.aquariumHalfSize = aquariumHalfSize;
     this.obstacles = obstacles;
     this.settings = settings;
@@ -54,7 +103,7 @@ export class FishSchoolSimulation {
     this.forwardAxis = new THREE.Vector3(0, 0, 1);
   }
 
-  reset(count, seed = 42) {
+  reset(count: number, seed = 42): void {
     const targetCount = normalizeFishCount(count, 0);
     this.fish.length = 0;
     this.random = mulberry32(seed);
@@ -64,7 +113,7 @@ export class FishSchoolSimulation {
     }
   }
 
-  setCount(count) {
+  setCount(count: number): void {
     const targetCount = normalizeFishCount(count, this.fish.length);
 
     if (targetCount < this.fish.length) {
@@ -77,7 +126,7 @@ export class FishSchoolSimulation {
     }
   }
 
-  createFish(index = this.fish.length) {
+  createFish(index = this.fish.length): FishState {
     const position = randomPointInAquarium(this.random, this.aquariumHalfSize, 0.62);
     const direction = randomPointInSphere(this.random, 1).normalize();
     const speed = THREE.MathUtils.lerp(
@@ -97,14 +146,14 @@ export class FishSchoolSimulation {
     return createFishMotionState(index);
   }
 
-  ensureBuffers(count) {
+  ensureBuffers(count: number): void {
     while (this.nextVelocities.length < count) {
       this.nextVelocities.push(new THREE.Vector3());
       this.nextPositions.push(new THREE.Vector3());
     }
   }
 
-  update(dt, options = {}) {
+  update(dt: number, options: UpdateOptions = {}): FishSimulationTrace | null {
     const count = this.fish.length;
     this.ensureBuffers(count);
     this.grid.setCellSize(this.settings.perceptionRadius);
@@ -119,6 +168,7 @@ export class FishSchoolSimulation {
 
     for (let i = 0; i < count; i += 1) {
       const fish = this.fish[i];
+      if (!fish) continue;
       const acceleration = this.accel.set(0, 0, 0);
       const components = options.traceIndex === i ? {
         align: new THREE.Vector3(),
@@ -139,6 +189,7 @@ export class FishSchoolSimulation {
         const j = neighbors[n];
         if (i === j) continue;
         const other = this.fish[j];
+        if (!other) continue;
         const offset = this.tmpOffset.subVectors(other.position, fish.position);
         const distanceSq = offset.lengthSq();
 
@@ -207,9 +258,11 @@ export class FishSchoolSimulation {
         this.settings.maxSpeed,
       );
       desiredVelocity.normalize().multiplyScalar(speed);
-      const velocity = this.limitTurn(fish.velocity, desiredVelocity, dt, nextVelocities[i]);
+      const nextVelocity = nextVelocities[i];
+      const nextPosition = nextPositions[i];
+      const velocity = this.limitTurn(fish.velocity, desiredVelocity, dt, nextVelocity);
 
-      nextPositions[i].copy(fish.position).addScaledVector(velocity, dt);
+      nextPosition.copy(fish.position).addScaledVector(velocity, dt);
 
       if (components) {
         trace = {
@@ -225,6 +278,7 @@ export class FishSchoolSimulation {
 
     for (let i = 0; i < count; i += 1) {
       const fish = this.fish[i];
+      if (!fish) continue;
       updateFishMotionState(fish, nextVelocities[i], dt, this.fishMotionScratch);
       fish.velocity.copy(nextVelocities[i]);
       fish.position.copy(nextPositions[i]);
@@ -233,7 +287,7 @@ export class FishSchoolSimulation {
     return trace;
   }
 
-  steerTowards(vector, velocity, out) {
+  steerTowards(vector: THREE.Vector3, velocity: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
     if (vector.lengthSq() < 0.000001) {
       return out.set(0, 0, 0);
     }
@@ -246,7 +300,12 @@ export class FishSchoolSimulation {
       .clampLength(0, this.settings.maxSteerForce);
   }
 
-  limitTurn(currentVelocity, desiredVelocity, dt, out) {
+  limitTurn(
+    currentVelocity: THREE.Vector3,
+    desiredVelocity: THREE.Vector3,
+    dt: number,
+    out: THREE.Vector3,
+  ): THREE.Vector3 {
     const speed = desiredVelocity.length();
     const currentDirection = this.tmpTurnCurrent.copy(currentVelocity).normalize();
     const desiredDirection = this.tmpTurnDesired.copy(desiredVelocity).normalize();
@@ -273,7 +332,7 @@ export class FishSchoolSimulation {
     return out.multiplyScalar(speed);
   }
 
-  isHeadingForCollision(position, forward) {
+  isHeadingForCollision(position: THREE.Vector3, forward: THREE.Vector3): boolean {
     if (this.rayHitsObstacle(position, forward, this.settings.collisionAvoidDistance)) {
       return true;
     }
@@ -285,7 +344,7 @@ export class FishSchoolSimulation {
     return !this.isInsidePredictedAquarium(end, this.settings.boundsRadius);
   }
 
-  obstacleRays(position, forward) {
+  obstacleRays(position: THREE.Vector3, forward: THREE.Vector3): THREE.Vector3 {
     this.tmpQuat.setFromUnitVectors(this.forwardAxis, forward);
 
     for (const localDirection of this.rayDirections) {
@@ -308,7 +367,7 @@ export class FishSchoolSimulation {
     return this.clearDirOut.copy(forward);
   }
 
-  rayHitsObstacle(origin, direction, maxDistance) {
+  rayHitsObstacle(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number): boolean {
     for (const obstacle of this.obstacles) {
       if (this.rayHitsSingleObstacle(origin, direction, maxDistance, obstacle)) {
         return true;
@@ -318,15 +377,33 @@ export class FishSchoolSimulation {
     return false;
   }
 
-  rayHitsSingleObstacle(origin, direction, maxDistance, obstacle) {
+  rayHitsSingleObstacle(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    maxDistance: number,
+    obstacle: Obstacle,
+  ): boolean {
     if ((obstacle.shape === "box" || obstacle.shape === "plate") && obstacle.size) {
       return this.rayHitsBoxObstacle(origin, direction, maxDistance, obstacle);
     }
 
-    return this.rayHitsSphereObstacle(origin, direction, maxDistance, obstacle);
+    const radius = obstacle.radius;
+    if (typeof radius === "number") {
+      return this.rayHitsSphereObstacle(origin, direction, maxDistance, {
+        ...obstacle,
+        radius,
+      });
+    }
+
+    return false;
   }
 
-  rayHitsBoxObstacle(origin, direction, maxDistance, obstacle) {
+  rayHitsBoxObstacle(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    maxDistance: number,
+    obstacle: Extract<Obstacle, { shape: "box" | "plate" }>,
+  ): boolean {
     const localOrigin = this.tmpRayLocalOrigin.subVectors(origin, obstacle.position);
     const localDirection = this.tmpRayLocalDir.copy(direction);
 
@@ -343,7 +420,12 @@ export class FishSchoolSimulation {
     return rayIntersectsExpandedBox(localOrigin, localDirection, halfX, halfY, halfZ, maxDistance);
   }
 
-  rayHitsSphereObstacle(origin, direction, maxDistance, obstacle) {
+  rayHitsSphereObstacle(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    maxDistance: number,
+    obstacle: Obstacle & { radius: number },
+  ): boolean {
     const radius = obstacle.radius + this.settings.boundsRadius;
     const offset = this.tmpRayLocalOrigin.subVectors(origin, obstacle.position);
     const b = offset.dot(direction);
@@ -361,7 +443,7 @@ export class FishSchoolSimulation {
     return (near >= 0 && near <= maxDistance) || (far >= 0 && far <= maxDistance);
   }
 
-  rotateAroundY(vector, angle) {
+  rotateAroundY(vector: THREE.Vector3, angle: number): THREE.Vector3 {
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     const x = vector.x;
@@ -372,13 +454,13 @@ export class FishSchoolSimulation {
     return vector;
   }
 
-  aquariumBoundarySteer(position) {
+  aquariumBoundarySteer(position: THREE.Vector3): THREE.Vector3 {
     const steer = this.boundaryOut.set(0, 0, 0);
     const horizontalMargin = this.settings.horizontalBoundaryMargin ?? this.settings.boundaryMargin;
     const topMargin = this.settings.topBoundaryMargin ?? this.settings.boundaryMargin;
     const bottomMargin = this.settings.bottomBoundaryMargin ?? this.settings.boundaryMargin;
 
-    for (const axis of ["x", "z"]) {
+    for (const axis of ["x", "z"] as const) {
       const innerLimit = this.aquariumHalfSize[axis] - horizontalMargin;
 
       if (position[axis] > innerLimit) {
@@ -399,7 +481,7 @@ export class FishSchoolSimulation {
     return steer;
   }
 
-  isInsideAquarium(point, inset = 0) {
+  isInsideAquarium(point: THREE.Vector3, inset = 0): boolean {
     return (
       Math.abs(point.x) <= this.aquariumHalfSize.x - inset &&
       Math.abs(point.y) <= this.aquariumHalfSize.y - inset &&
@@ -407,7 +489,7 @@ export class FishSchoolSimulation {
     );
   }
 
-  isInsidePredictedAquarium(point, inset = 0) {
+  isInsidePredictedAquarium(point: THREE.Vector3, inset = 0): boolean {
     const topInset = Math.min(inset, this.settings.topBoundaryMargin ?? inset);
 
     return (
@@ -419,7 +501,7 @@ export class FishSchoolSimulation {
   }
 }
 
-function normalizeFishCount(count, fallback) {
+function normalizeFishCount(count: number, fallback: number): number {
   if (!Number.isFinite(count)) {
     return fallback;
   }
@@ -427,7 +509,14 @@ function normalizeFishCount(count, fallback) {
   return Math.max(0, Math.floor(count));
 }
 
-function rayIntersectsExpandedBox(origin, direction, halfX, halfY, halfZ, maxDistance) {
+function rayIntersectsExpandedBox(
+  origin: THREE.Vector3,
+  direction: THREE.Vector3,
+  halfX: number,
+  halfY: number,
+  halfZ: number,
+  maxDistance: number,
+): boolean {
   let near = 0;
   let far = maxDistance;
 

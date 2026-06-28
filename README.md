@@ -55,13 +55,13 @@
 | **珊瑚** | 页面打开或刷新时从 0 个、0 尺寸逐步生长到默认状态，营造生命感 |
 | **控制面板** | 右侧可折叠菜单，提供鱼群、水面、珊瑚、光照和显示效果等中文参数 |
 | **多语言** | 可视化界面和 README 支持中文/英文切换 |
-| **部署** | 静态前端项目，可直接部署到 GitHub Pages |
+| **部署** | TypeScript 构建后的静态前端项目，可部署到 GitHub Pages |
 
 ---
 
 ## 🚀 快速开始
 
-这是一个静态 Three.js ESM 项目，不依赖后端服务。Three.js 运行时已本地化到 `vendor/`，本地服务器运行时无需联网。
+这是一个 TypeScript + Three.js ESM 项目，不依赖后端服务。Three.js 运行时已本地化到 `vendor/`，构建后的静态资源可直接由本地服务器或 GitHub Pages 托管。
 
 > 提示：由于使用了原生 ES Module，浏览器在 `file://` 协议下会拦截模块加载，因此需要通过本地 HTTP 服务器打开，不能直接双击 `index.html`。
 
@@ -72,7 +72,14 @@ git clone https://github.com/SeanWong17/RippleAquarium.git
 cd RippleAquarium
 ```
 
-### 2. 本地运行
+### 2. 安装并构建
+
+```bash
+npm install
+npm run build
+```
+
+### 3. 本地运行
 
 建议使用本地静态服务器运行：
 
@@ -86,9 +93,9 @@ python3 -m http.server 8001
 http://127.0.0.1:8001/index.html
 ```
 
-### 3. 运行测试（可选）
+### 4. 运行测试（可选）
 
-模拟逻辑（boids 转向、避障射线、空间网格）带有单元测试，使用 Node 内置 test runner，无第三方依赖：
+模拟逻辑（boids 转向、避障射线、空间网格）带有单元测试，使用 Node 内置 test runner：
 
 ```bash
 npm test
@@ -120,7 +127,7 @@ npm test
 | **鱼体运动** | 基于速度方向和姿态变化驱动鱼体朝向，锦鲤复用沙丁鱼行为逻辑并保留更粗胖的体型 |
 | **水面涟漪** | 使用水面网格高度场传播波动，支持鼠标与鱼体触发 |
 | **珊瑚生长** | 初始化阶段按统一成长进度驱动每个珊瑚从小到大生长 |
-| **依赖** | Three.js 运行时与 addons 本地化到 `vendor/`，本地服务器运行时无需联网 |
+| **依赖** | Three.js 运行时与 addons 本地化到 `vendor/`；TypeScript 与类型声明作为开发依赖安装 |
 | **国际化** | 轻量级前端 i18n 字典，界面文案可在中英文之间切换 |
 
 ### 项目结构
@@ -132,15 +139,18 @@ RippleAquarium/
 ├── src/
 │   ├── fish/               # 鱼模型加载、姿态、变形、实例化渲染与空间网格
 │   ├── coral/              # 珊瑚模型资源
-│   ├── fish-school-simulation.js
-│   ├── water-surface.js
-│   ├── coral-reef.js
-│   ├── clownfish-school.js
-│   ├── i18n.js
-│   └── main.js
+│   ├── fish-school-simulation.ts
+│   ├── water-surface.ts
+│   ├── coral-reef.ts
+│   ├── clownfish-school.ts
+│   ├── i18n.ts
+│   └── main.ts
+├── scripts/                # 构建辅助脚本
 ├── test/                   # 模拟逻辑单元测试（Node 内置 test runner）
+├── dist/                   # TypeScript 构建产物（本地生成，不提交）
 ├── index.html
 ├── package.json
+├── tsconfig.json
 ├── README.md
 ├── README.en.md
 └── LICENSE

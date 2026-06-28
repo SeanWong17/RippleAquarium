@@ -289,7 +289,7 @@ export function createWaterSurface(renderer) {
 
     simulationMaterial.uniforms.uPrevious.value = readTarget.texture;
     simulationMaterial.uniforms.uImpactCount.value = count;
-    simulationMaterial.uniforms.uImpacts.needsUpdate = true;
+    simulationMaterial.uniforms.uImpacts.value.needsUpdate = true;
 
     const previousTarget = renderer.getRenderTarget();
     renderer.setRenderTarget(writeTarget);

@@ -6,8 +6,17 @@
  * and the query-result buffer are pooled and reused across frames, so steady
  * state runs without per-frame heap allocation.
  */
-export class SpatialGrid {
-  constructor(cellSize) {
+interface PositionedItem {
+  position: { x: number; y: number; z: number };
+}
+
+export class SpatialGrid<T extends PositionedItem = PositionedItem> {
+  cellSize: number;
+  buckets: Map<number, number[]>;
+  freeBuckets: number[][];
+  neighborScratch: number[];
+
+  constructor(cellSize: number) {
     this.cellSize = cellSize > 0 ? cellSize : 1;
     this.buckets = new Map();
     this.freeBuckets = [];
@@ -18,14 +27,14 @@ export class SpatialGrid {
    * Resize cells. No-op when unchanged so callers can invoke it every frame
    * (perceptionRadius is adjustable from the UI).
    */
-  setCellSize(cellSize) {
+  setCellSize(cellSize: number): void {
     const next = cellSize > 0 ? cellSize : 1;
     if (next !== this.cellSize) {
       this.cellSize = next;
     }
   }
 
-  clear() {
+  clear(): void {
     for (const bucket of this.buckets.values()) {
       bucket.length = 0;
       this.freeBuckets.push(bucket);
@@ -34,14 +43,14 @@ export class SpatialGrid {
   }
 
   /** Rebuild the grid from an array of items exposing a `.position`. */
-  build(items) {
+  build(items: T[]): void {
     this.clear();
     for (let i = 0; i < items.length; i += 1) {
       this.insert(i, items[i].position);
     }
   }
 
-  insert(index, position) {
+  insert(index: number, position: PositionedItem["position"]): void {
     const key = this.hash(
       this.cellIndex(position.x),
       this.cellIndex(position.y),
@@ -60,7 +69,7 @@ export class SpatialGrid {
    * reused buffer and return it. The buffer is overwritten on each call, so
    * consume it before querying again.
    */
-  queryNeighbors(position) {
+  queryNeighbors(position: PositionedItem["position"]): number[] {
     const result = this.neighborScratch;
     result.length = 0;
 
@@ -83,11 +92,11 @@ export class SpatialGrid {
     return result;
   }
 
-  cellIndex(value) {
+  cellIndex(value: number): number {
     return Math.floor(value / this.cellSize);
   }
 
-  hash(x, y, z) {
+  hash(x: number, y: number, z: number): number {
     // Pack signed cell coordinates into a single string key. Cell counts stay
     // small (aquarium is a few dozen cells per axis) so collisions are bounded
     // by the +/-512 offset used to keep the components non-negative.

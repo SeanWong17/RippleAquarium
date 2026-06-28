@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve as resolvePath } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const vendor = resolvePath(here, "..", "vendor", "three");
+const vendor = resolvePath(process.cwd(), "vendor", "three");
 
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === "three") {

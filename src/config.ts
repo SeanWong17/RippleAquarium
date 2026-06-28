@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { ExclusionZone, FishConfig, Obstacle, SimulationSettings } from "./types.js";
 
 export const aquariumHalfSize = new THREE.Vector3(11, 6.6, 8.5);
 export const aquariumSize = aquariumHalfSize.clone().multiplyScalar(2);
@@ -61,7 +62,7 @@ export const fishConfig = {
   swimAccelerationFull: 2.4,
   swimAccelerationPulseSeconds: 0.32,
   swimTurnCurveStart: 0.08,
-};
+} satisfies FishConfig;
 
 export const simulationSettings = {
   minSpeed: 3,
@@ -81,7 +82,7 @@ export const simulationSettings = {
   topBoundaryMargin: 0.42,
   bottomBoundaryMargin: 2,
   horizontalBoundaryMargin: 2,
-};
+} satisfies SimulationSettings;
 
 export const obstacles = [
   {
@@ -94,7 +95,7 @@ export const obstacles = [
     rotationY: pineappleHouseDecor.rotationY,
     render: false,
   },
-];
+] satisfies Obstacle[];
 
 export const coralExclusionZones = [
   {
@@ -106,7 +107,7 @@ export const coralExclusionZones = [
     shape: "box",
     size: frontDecorCoralMask.size,
   },
-];
+] satisfies ExclusionZone[];
 
 export const clownfishAvoidanceZones = [
   {
@@ -125,4 +126,4 @@ export const clownfishAvoidanceZones = [
     size: frontDecorCoralMask.size.clone().add(new THREE.Vector2(0.7, 0.65)),
     strength: 2.5,
   },
-];
+] satisfies ExclusionZone[];

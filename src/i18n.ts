@@ -101,42 +101,50 @@ const translations = {
 
 let currentLanguage = readInitialLanguage();
 
-export function t(key) {
+type Language = keyof typeof translations;
+type TranslationKey = keyof typeof translations.zh;
+
+function isLanguage(language: string | null | undefined): language is Language {
+  return Boolean(language && language in translations);
+}
+
+export function t(key: TranslationKey | string | null | undefined): string {
+  if (!key) return "";
   return translations[currentLanguage]?.[key] ?? translations.zh[key] ?? key;
 }
 
-export function getLanguage() {
+export function getLanguage(): Language {
   return currentLanguage;
 }
 
-export function setLanguage(language) {
-  if (!translations[language]) return false;
+export function setLanguage(language: string | null | undefined): boolean {
+  if (!isLanguage(language)) return false;
 
   currentLanguage = language;
   localStorage.setItem(STORAGE_KEY, language);
   return true;
 }
 
-export function applyTranslations(root = document) {
+export function applyTranslations(root: ParentNode = document): void {
   document.documentElement.lang = currentLanguage === "zh" ? "zh-CN" : "en";
   document.title = t("title");
 
-  root.querySelectorAll("[data-i18n]").forEach((element) => {
+  root.querySelectorAll<HTMLElement>("[data-i18n]").forEach((element) => {
     setElementText(element, t(element.dataset.i18n));
   });
-  root.querySelectorAll("[data-i18n-title]").forEach((element) => {
+  root.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach((element) => {
     element.title = t(element.dataset.i18nTitle);
   });
-  root.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+  root.querySelectorAll<HTMLElement>("[data-i18n-aria-label]").forEach((element) => {
     element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel));
   });
 }
 
-function setElementText(element, text) {
+function setElementText(element: HTMLElement, text: string): void {
   if (element.tagName === "LABEL") {
     const textNode = Array.from(element.childNodes).find(
       (node) => node.nodeType === Node.TEXT_NODE && node.nodeValue.trim(),
-    );
+    ) as ChildNode | undefined;
     if (textNode) {
       textNode.nodeValue = `\n          ${text}\n          `;
       return;
@@ -146,9 +154,9 @@ function setElementText(element, text) {
   element.textContent = text;
 }
 
-function readInitialLanguage() {
+function readInitialLanguage(): Language {
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (translations[saved]) return saved;
+  if (isLanguage(saved)) return saved;
 
   return navigator.language?.toLowerCase().startsWith("zh") ? "zh" : "en";
 }

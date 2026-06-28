@@ -5,6 +5,14 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node --import ./test/three-resolver.js --test test/*.test.js"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc && node scripts/copy-assets.mjs",
+    "test": "npm run build && node --import ./dist/test/three-resolver.js --test dist/test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@types/three": "^0.185.0",
+    "three": "^0.185.0",
+    "typescript": "^6.0.3"
   }
 }

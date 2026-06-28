@@ -1,6 +1,19 @@
 import * as THREE from "three";
+import type { FishSimulationTrace, FishState } from "./types.js";
 
 const DEFAULT_FRAME_LIMIT = 240;
+
+interface HeadingDebugSample {
+  frame: number;
+  dt: number;
+  deltaDegrees: number;
+  direction: number[];
+  speed: number;
+  neighborCount: number;
+  collisionAvoidanceActive: boolean;
+  boundaryAvoidanceActive: boolean;
+  componentMagnitudes: Record<string, number>;
+}
 
 export function createHeadingDebugger({ enabled, frameLimit = DEFAULT_FRAME_LIMIT }) {
   if (!enabled) {
@@ -11,14 +24,14 @@ export function createHeadingDebugger({ enabled, frameLimit = DEFAULT_FRAME_LIMI
   const currentDirection = new THREE.Vector3();
   let frame = 0;
   let hasPreviousDirection = false;
-  const samples = [];
+  const samples: HeadingDebugSample[] = [];
 
   return {
     get traceIndex() {
       return 0;
     },
 
-    sample({ dt, fish, trace }) {
+    sample({ dt, fish, trace }: { dt: number; fish?: FishState; trace?: FishSimulationTrace | null }) {
       if (!fish || frame >= frameLimit) {
         return;
       }
@@ -33,7 +46,7 @@ export function createHeadingDebugger({ enabled, frameLimit = DEFAULT_FRAME_LIMI
       const componentMagnitudes = Object.fromEntries(
         Object.entries(trace?.components ?? {}).map(([name, vector]) => [
           name,
-          Number(vector.length().toFixed(3)),
+          Number((vector as THREE.Vector3).length().toFixed(3)),
         ]),
       );
 

@@ -55,13 +55,13 @@ A whole tank of fish swims on its own using boids flocking: they gather, turn, a
 | **Coral reef** | On page load or refresh, corals grow from zero count and zero scale into the default reef |
 | **Control drawer** | Collapsible right-side panel for fish, water, coral, lighting, and visual parameters |
 | **Internationalization** | The UI and README support Chinese and English |
-| **Deployment** | Static frontend project deployable on GitHub Pages |
+| **Deployment** | TypeScript-built static frontend deployable on GitHub Pages |
 
 ---
 
 ## 🚀 Quick Start
 
-This is a static Three.js ESM project with no backend dependency. The Three.js runtime is vendored under `vendor/`, so no network access is needed once you serve it locally.
+This is a TypeScript + Three.js ESM project with no backend dependency. The Three.js runtime is vendored under `vendor/`, and the built static output can be served locally or deployed to GitHub Pages.
 
 > Note: because the project uses native ES Modules, browsers block module loading over the `file://` protocol. Open it through a local HTTP server rather than double-clicking `index.html`.
 
@@ -72,7 +72,14 @@ git clone https://github.com/SeanWong17/RippleAquarium.git
 cd RippleAquarium
 ```
 
-### 2. Run locally
+### 2. Install and build
+
+```bash
+npm install
+npm run build
+```
+
+### 3. Run locally
 
 Use a local static server:
 
@@ -86,9 +93,9 @@ Then open:
 http://127.0.0.1:8001/index.html
 ```
 
-### 3. Run tests (optional)
+### 4. Run tests (optional)
 
-The simulation logic (boids steering, avoidance rays, spatial grid) ships with unit tests using Node's built-in test runner, with no third-party dependencies:
+The simulation logic (boids steering, avoidance rays, spatial grid) ships with unit tests using Node's built-in test runner:
 
 ```bash
 npm test
@@ -120,7 +127,7 @@ npm test
 | **Fish motion** | Fish orientation follows velocity and pose changes; koi reuse sardine behavior while keeping a thicker body shape |
 | **Ripples** | Water mesh height-field propagation with mouse-triggered and fish-triggered disturbance |
 | **Coral growth** | The initialization sequence drives each coral from small to full size |
-| **Dependencies** | The Three.js runtime and addons are vendored under `vendor/`, so no network access is needed once served locally |
+| **Dependencies** | The Three.js runtime and addons are vendored under `vendor/`; TypeScript and type declarations are installed as development dependencies |
 | **i18n** | Lightweight frontend dictionary for Chinese/English UI text |
 
 ### Project Structure
@@ -132,15 +139,18 @@ RippleAquarium/
 ├── src/
 │   ├── fish/               # Fish model loading, pose, deformation, instanced rendering, and spatial grid
 │   ├── coral/              # Coral model assets
-│   ├── fish-school-simulation.js
-│   ├── water-surface.js
-│   ├── coral-reef.js
-│   ├── clownfish-school.js
-│   ├── i18n.js
-│   └── main.js
+│   ├── fish-school-simulation.ts
+│   ├── water-surface.ts
+│   ├── coral-reef.ts
+│   ├── clownfish-school.ts
+│   ├── i18n.ts
+│   └── main.ts
+├── scripts/                # Build helper scripts
 ├── test/                   # Simulation unit tests (Node built-in test runner)
+├── dist/                   # TypeScript build output (generated locally, not committed)
 ├── index.html
 ├── package.json
+├── tsconfig.json
 ├── README.md
 ├── README.en.md
 └── LICENSE

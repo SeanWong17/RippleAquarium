@@ -1,7 +1,8 @@
 import * as THREE from "three";
+import type { RandomSource } from "./types.js";
 
-export function createRayDirections(count) {
-  const directions = [];
+export function createRayDirections(count: number): THREE.Vector3[] {
+  const directions: THREE.Vector3[] = [];
   const goldenRatio = (1 + Math.sqrt(5)) / 2;
   const angleIncrement = Math.PI * 2 * goldenRatio;
 
@@ -21,7 +22,7 @@ export function createRayDirections(count) {
   return directions;
 }
 
-export function mulberry32(seed) {
+export function mulberry32(seed: number): RandomSource {
   return function next() {
     let value = (seed += 0x6d2b79f5);
     value = Math.imul(value ^ (value >>> 15), value | 1);
@@ -30,7 +31,11 @@ export function mulberry32(seed) {
   };
 }
 
-export function randomPointInAquarium(random, halfSize, scale = 1) {
+export function randomPointInAquarium(
+  random: RandomSource,
+  halfSize: THREE.Vector3,
+  scale = 1,
+): THREE.Vector3 {
   return new THREE.Vector3(
     (random() * 2 - 1) * halfSize.x * scale,
     (random() * 2 - 1) * halfSize.y * scale,
@@ -38,7 +43,7 @@ export function randomPointInAquarium(random, halfSize, scale = 1) {
   );
 }
 
-export function randomPointInSphere(random, radius) {
+export function randomPointInSphere(random: RandomSource, radius: number): THREE.Vector3 {
   const point = new THREE.Vector3();
 
   do {

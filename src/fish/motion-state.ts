@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { fishConfig } from "./config.js";
+import type { FishMotionScratch, FishMotionState, FishState } from "../types.js";
 
 const TWO_PI = Math.PI * 2;
 const SWIM_PHASE_STEP = Math.PI * (3 - Math.sqrt(5));
@@ -7,7 +8,7 @@ const worldUp = new THREE.Vector3(0, 1, 0);
 
 const defaultScratch = createFishMotionScratch();
 
-export function createFishMotionScratch() {
+export function createFishMotionScratch(): FishMotionScratch {
   return {
     previousDirection: new THREE.Vector3(),
     nextDirection: new THREE.Vector3(),
@@ -17,7 +18,7 @@ export function createFishMotionScratch() {
   };
 }
 
-export function createFishMotionState(index = 0) {
+export function createFishMotionState(index = 0): FishMotionState {
   return {
     swimPhase: readInitialSwimPhase(index),
     swimDrive: 0,
@@ -29,11 +30,11 @@ export function createFishMotionState(index = 0) {
 }
 
 export function updateFishMotionState(
-  fish,
-  nextVelocity,
-  dt,
-  scratch = defaultScratch,
-) {
+  fish: FishState | null | undefined,
+  nextVelocity: THREE.Vector3 | undefined,
+  dt: number,
+  scratch: FishMotionScratch = defaultScratch,
+): void {
   if (!fish || !nextVelocity || dt <= 0) {
     return;
   }
@@ -76,7 +77,7 @@ export function updateFishMotionState(
   );
 }
 
-function updateSwimPhase(fish, currentSpeed, nextSpeed, dt) {
+function updateSwimPhase(fish: FishState, currentSpeed: number, nextSpeed: number, dt: number): void {
   const accelerationDrive = updateAccelerationSwimDrive(
     fish,
     currentSpeed,
@@ -91,7 +92,7 @@ function updateSwimPhase(fish, currentSpeed, nextSpeed, dt) {
   fish.swimPhase = ((fish.swimPhase ?? 0) + swimFrequency * TWO_PI * dt) % TWO_PI;
 }
 
-function readSwimFrequency(swimDrive) {
+function readSwimFrequency(swimDrive: number): number {
   const frequency = THREE.MathUtils.lerp(
     fishConfig.swimFrequencyMin,
     fishConfig.swimFrequencyMax,
@@ -105,7 +106,12 @@ function readSwimFrequency(swimDrive) {
   return Math.min(frequency, 1 / minInterval);
 }
 
-function updateAccelerationSwimDrive(fish, currentSpeed, nextSpeed, dt) {
+function updateAccelerationSwimDrive(
+  fish: FishState,
+  currentSpeed: number,
+  nextSpeed: number,
+  dt: number,
+): number {
   const acceleration = (nextSpeed - currentSpeed) / Math.max(0.0001, dt);
   const triggerDrive = THREE.MathUtils.smoothstep(
     acceleration,
@@ -129,13 +135,13 @@ function updateAccelerationSwimDrive(fish, currentSpeed, nextSpeed, dt) {
 }
 
 function updateCurveBend(
-  fish,
-  previousDirection,
-  nextDirection,
-  speed,
-  dt,
-  scratch,
-) {
+  fish: FishState,
+  previousDirection: THREE.Vector3,
+  nextDirection: THREE.Vector3,
+  speed: number,
+  dt: number,
+  scratch: FishMotionScratch,
+): void {
   const travelDistance = Math.max(0.0001, speed * dt);
   const targetCurve = scratch.targetCurve.copy(nextDirection).sub(previousDirection);
   targetCurve
@@ -146,7 +152,12 @@ function updateCurveBend(
   dampCurveBend(fish, targetCurve, dt, scratch);
 }
 
-function dampCurveBend(fish, targetCurve, dt, scratch) {
+function dampCurveBend(
+  fish: FishState,
+  targetCurve: THREE.Vector3 | null,
+  dt: number,
+  scratch: FishMotionScratch,
+): void {
   if (!fish.curveBendWorld) {
     fish.curveBendWorld = new THREE.Vector3();
   }
@@ -156,19 +167,19 @@ function dampCurveBend(fish, targetCurve, dt, scratch) {
   fish.curveBendWorld.lerp(target, alpha);
 }
 
-function readInitialSwimPhase(index) {
+function readInitialSwimPhase(index: number): number {
   return (Math.max(0, index) * SWIM_PHASE_STEP) % TWO_PI;
 }
 
-function dampAngle(current, target, response, dt) {
+function dampAngle(current: number, target: number, response: number, dt: number): number {
   return THREE.MathUtils.lerp(current, target, readDampingAlpha(response, dt));
 }
 
-function readDampingAlpha(response, dt) {
+function readDampingAlpha(response: number, dt: number): number {
   return 1 - Math.exp(-Math.max(0, response) * dt);
 }
 
-function readTurnSwimDrive(curveBendWorld) {
+function readTurnSwimDrive(curveBendWorld: THREE.Vector3 | undefined): number {
   if (!curveBendWorld || curveBendWorld.lengthSq() <= 0.000001) {
     return 0;
   }

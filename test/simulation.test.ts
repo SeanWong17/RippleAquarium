@@ -77,7 +77,7 @@ test("ray hits a box obstacle dead ahead and misses when pointing away", () => {
   const sim = makeSimulation();
   const obstacle = {
     position: new THREE.Vector3(0, 0, 5),
-    shape: "box",
+    shape: "box" as const,
     size: new THREE.Vector3(2, 2, 2),
   };
   const origin = new THREE.Vector3(0, 0, 0);
@@ -123,7 +123,7 @@ test("SpatialGrid neighbour query matches brute-force within the cell radius", (
 
   const radiusSq = radius * radius;
   for (let i = 0; i < items.length; i += 1) {
-    const brute = new Set();
+    const brute = new Set<number>();
     for (let j = 0; j < items.length; j += 1) {
       if (i === j) continue;
       if (items[i].position.distanceToSquared(items[j].position) < radiusSq) {

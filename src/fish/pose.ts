@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { fishConfig } from "./config.js";
+import type { FishState } from "../types.js";
 
 const worldUp = new THREE.Vector3(0, 1, 0);
 const worldForward = new THREE.Vector3(0, 0, 1);
@@ -10,19 +11,33 @@ const tmpDorsal = new THREE.Vector3();
 const tmpRight = new THREE.Vector3();
 const tmpBasis = new THREE.Matrix4();
 
-export function readFishDirection(fish, target) {
-  if (fish?.velocity?.lengthSq() > 0.000001) {
-    return target.copy(fish.velocity).normalize();
+interface FishPose {
+  position: THREE.Vector3;
+  direction: THREE.Vector3;
+}
+
+export function readFishDirection(
+  fish: Partial<FishState> | null | undefined,
+  target: THREE.Vector3,
+): THREE.Vector3 {
+  const velocity = fish?.velocity;
+  if (velocity && velocity.lengthSq() > 0.000001) {
+    return target.copy(velocity).normalize();
   }
 
-  if (fish?.introDropDirection?.lengthSq() > 0.000001) {
-    return target.copy(fish.introDropDirection).normalize();
+  const introDropDirection = fish?.introDropDirection;
+  if (introDropDirection && introDropDirection.lengthSq() > 0.000001) {
+    return target.copy(introDropDirection).normalize();
   }
 
   return target.copy(localForward);
 }
 
-export function writeFishOrientationQuaternion(fish, direction, target) {
+export function writeFishOrientationQuaternion(
+  fish: Partial<FishState>,
+  direction: THREE.Vector3,
+  target: THREE.Quaternion,
+): THREE.Quaternion {
   const forward = tmpForward.copy(direction);
 
   tmpDorsal.copy(worldUp).addScaledVector(forward, -worldUp.dot(forward));
@@ -47,7 +62,7 @@ export function writeFishOrientationQuaternion(fish, direction, target) {
   return target.setFromRotationMatrix(tmpBasis);
 }
 
-export function getFishHeadPose(fish, pose) {
+export function getFishHeadPose(fish: FishState, pose: FishPose): FishPose {
   readFishDirection(fish, pose.direction);
   pose.position.copy(fish.position).addScaledVector(pose.direction, fishConfig.length / 2);
   return pose;

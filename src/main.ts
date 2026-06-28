@@ -229,7 +229,7 @@ function bindPlaybackControls() {
 function bindLanguageSwitcher() {
   applyCurrentLanguage();
 
-  document.querySelectorAll(".lang-btn").forEach((button) => {
+  document.querySelectorAll<HTMLElement>(".lang-btn").forEach((button) => {
     button.addEventListener("click", () => {
       if (!setLanguage(button.dataset.lang)) return;
 
@@ -250,7 +250,7 @@ function applyCurrentLanguage() {
 
 function syncLanguageButtons() {
   const language = getLanguage();
-  document.querySelectorAll(".lang-btn").forEach((button) => {
+  document.querySelectorAll<HTMLElement>(".lang-btn").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.lang === language);
   });
 }
